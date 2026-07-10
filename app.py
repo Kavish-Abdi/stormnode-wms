@@ -6,14 +6,13 @@ from datetime import datetime, timedelta
 # --- PAGE CONFIGURATION & LOGO ---
 st.set_page_config(page_title="StormNode Logistics", page_icon="⚡", layout="wide")
 
-# Load the logo (Ensure you save the generated image as logo1.png in the same folder)
+# Load the logo 
 try:
-    st.sidebar.image("logo1.png", use_container_width=True)
+    st.sidebar.image("logo1.png")
 except:
     st.sidebar.title("⚡ StormNode Logistics")
 
 # --- INITIALIZE DATABASE (Session State) ---
-# This keeps our data alive while the app is running
 if 'truck_logs' not in st.session_state:
     st.session_state['truck_logs'] = pd.DataFrame(columns=["Truck_ID", "Entry_Time", "Exit_Time", "Status"])
 
@@ -51,7 +50,6 @@ if page == "Dockyard Management":
 
     with col2:
         st.subheader("Log Truck Exit")
-        # Filter only trucks that are currently at the dock
         docked_trucks = st.session_state['truck_logs'][st.session_state['truck_logs']["Status"] == "At Dock"]["Truck_ID"].tolist()
         exit_truck_id = st.selectbox("Select Truck to Dispatch", ["Select a Truck"] + docked_trucks)
         
@@ -64,7 +62,7 @@ if page == "Dockyard Management":
 
     st.markdown("---")
     st.subheader("Live Dockyard Activity Log")
-    st.dataframe(st.session_state['truck_logs'], use_container_width=True)
+    st.dataframe(st.session_state['truck_logs'])
 
 # ==========================================
 # PAGE 2: INVENTORY & QR TRACKING
@@ -109,7 +107,7 @@ elif page == "Inventory & QR Tracking":
 
     st.markdown("---")
     st.subheader("Warehouse Inventory Database")
-    st.dataframe(st.session_state['inventory'], use_container_width=True)
+    st.dataframe(st.session_state['inventory'])
 
 # ==========================================
 # PAGE 3: GPS & FLEET TRACKING
@@ -138,6 +136,5 @@ elif page == "GPS & Fleet Tracking":
     col3.metric("Estimated Arrival (ETA)", estimated_arrival.strftime("%I:%M %p"))
 
     st.markdown("### Live Map Feed")
-    # Create a dataframe required by st.map
     map_data = pd.DataFrame({'lat': [lat], 'lon': [lon]})
     st.map(map_data, zoom=11)
