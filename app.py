@@ -3,216 +3,230 @@ import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
 import random
+import pydeck as pdk
+from streamlit_autorefresh import st_autorefresh
 
 # --- PAGE CONFIGURATION & LOGO ---
 st.set_page_config(page_title="StormNode Logistics", page_icon="⚡", layout="wide")
 
-# Load the logo 
 try:
     st.sidebar.image("logo1.png")
 except:
     st.sidebar.title("⚡ StormNode Logistics")
 
-# --- HELPER FUNCTIONS ---
-def render_footer():
-    st.markdown("---")
-    st.markdown(
-        "<div style='text-align: center; color: gray; font-size: 14px;'>"
-        "<strong>StormNode Logistics</strong> | Est. 2024<br>"
-        "<em>Powering the Connected Supply Chain</em>"
-        "</div>", 
-        unsafe_allow_html=True
-    )
-
 # --- INITIALIZE SYNTHETIC DATABASE (Session State) ---
 if 'truck_logs' not in st.session_state:
-    # Generate 5 synthetic trucks currently at the dock
     synthetic_trucks = []
-    for i in range(5):
+    locations = ["Whse A - Dock 1", "Whse A - Dock 2", "Whse B - Dock 1", "Whse C - Heavy Freight", "Whse C - Cold Chain"]
+    for i in range(10):
         entry_time = datetime.now() - timedelta(minutes=random.randint(15, 120))
         synthetic_trucks.append({
             "Truck_ID": f"TRK-{random.randint(1000, 9999)}", 
             "Entry_Time": entry_time.strftime("%Y-%m-%d %H:%M:%S"), 
-            "Exit_Time": "Pending", 
-            "Status": "At Dock"
+            "Exit_Time": "Pending" if i % 2 == 0 else (entry_time + timedelta(minutes=45)).strftime("%Y-%m-%d %H:%M:%S"), 
+            "Warehouse_Location": random.choice(locations),
+            "Status": "At Dock" if i % 2 == 0 else "Dispatched"
         })
     st.session_state['truck_logs'] = pd.DataFrame(synthetic_trucks)
+    st.session_state['last_auto_update'] = datetime.now()
+    st.session_state['auto_toggle'] = "entry" # Toggles between auto-entry and auto-exit
 
 if 'inventory' not in st.session_state:
-    # Generate synthetic inventory
-    synthetic_inv = [
-        {"Batch_QR": "QR-8821", "Item_Name": "Semiconductors - Type A", "Location": "Aisle 1 - Bin A", "Time_Received": (datetime.now() - timedelta(days=2)).strftime("%Y-%m-%d %H:%M:%S"), "Time_Dispatched": "N/A", "Dispatched_On_Truck": "N/A", "Status": "In Warehouse"},
-        {"Batch_QR": "QR-9904", "Item_Name": "Lithium-Ion Batteries", "Location": "Aisle 3 - Cold Storage", "Time_Received": (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d %H:%M:%S"), "Time_Dispatched": "N/A", "Dispatched_On_Truck": "N/A", "Status": "In Warehouse"},
-        {"Batch_QR": "QR-1105", "Item_Name": "Automotive Sensors", "Location": "Aisle 2 - Bin A", "Time_Received": (datetime.now() - timedelta(hours=5)).strftime("%Y-%m-%d %H:%M:%S"), "Time_Dispatched": "N/A", "Dispatched_On_Truck": "N/A", "Status": "In Warehouse"}
-    ]
+    synthetic_inv = []
+    items = ["Semiconductors", "Lithium Batteries", "Auto Parts", "Medical Supplies", "Consumer Tech", "Machinery"]
+    sides = ["North Wing", "South Wing", "East Wing", "West Wing"]
+    for i in range(20):
+        synthetic_inv.append({
+            "Batch_QR": f"QR-{random.randint(1000, 9999)}", 
+            "Item_Name": random.choice(items), 
+            "Warehouse_Side": random.choice(sides),
+            "Aisle_Number": f"Aisle {random.randint(1, 15)}",
+            "Bin_Location": f"Bin {random.choice(['A','B','C','D'])}-{random.randint(1,9)}",
+            "Time_Received": (datetime.now() - timedelta(hours=random.randint(1, 72))).strftime("%Y-%m-%d %H:%M:%S"), 
+            "Time_Dispatched": "N/A", 
+            "Dispatched_On_Truck": "N/A", 
+            "Status": "In Warehouse"
+        })
     st.session_state['inventory'] = pd.DataFrame(synthetic_inv)
 
 # --- NAVIGATION ---
 st.sidebar.markdown("---")
-page = st.sidebar.radio("Main Menu", ["About StormNode", "Dockyard Management", "Inventory & QR Tracking", "GPS & Fleet Tracking"])
+page = st.sidebar.radio("Main Menu", [
+    "Dockyard Management", 
+    "Inventory & QR Tracking", 
+    "GPS & Fleet Tracking",
+    "About StormNode"
+])
 
 # ==========================================
-# PAGE 1: ABOUT STORMNODE
+# PAGE 1: DOCKYARD MANAGEMENT
 # ==========================================
-if page == "About StormNode":
-    st.title("⚡ About StormNode Logistics")
-    st.markdown("### Powering the Connected Supply Chain")
+if page == "Dockyard Management":
+    # 60-second background refresh for automation
+    count = st_autorefresh(interval=60000, limit=1000, key="dockyard_auto")
     
-    st.markdown("""
-    **StormNode Logistics** is a next-generation freight and warehousing startup designed to bridge the gap between heavy physical freight and cutting-edge digital infrastructure. 
-    
-    Founded in 2024, our mission is to eliminate supply chain opacity. Traditional logistics rely on manual data entry and fragmented tracking systems. At StormNode, we treat every warehouse, truck, and cargo batch as a "node" in a highly connected, automated neural network.
-    
-    #### Core Technologies:
-    * **Automated Dockyard Sensors:** Replacing manual logs with automated, timestamped truck detection.
-    * **Dynamic QR Tracing:** Real-time visibility of inventory from the moment it enters the warehouse to the moment it leaves.
-    * **Predictive GPS Routing:** Utilizing live traffic conditions and spatial data to dynamically recalculate Estimated Times of Arrival (ETA).
-    
-    We don't just move freight; we optimize it.
-    """)
-    render_footer()
-
-# ==========================================
-# PAGE 2: DOCKYARD MANAGEMENT
-# ==========================================
-elif page == "Dockyard Management":
     st.title("🚛 Dockyard Management")
     st.markdown("Automated gate sensors and real-time dispatch control.")
 
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.subheader("Automated Gate Sensor")
-        st.markdown("Simulate a truck passing through the automated RFID gate scanner.")
-        if st.button("📡 Auto-Detect Arriving Truck", type="primary"):
+    # AUTOMATED LIVE ENTRY/EXIT LOGIC
+    now = datetime.now()
+    if (now - st.session_state['last_auto_update']).total_seconds() >= 60:
+        st.session_state['last_auto_update'] = now
+        locations = ["Whse A - Dock 1", "Whse A - Dock 2", "Whse B - Dock 1", "Whse C - Heavy Freight"]
+        
+        if st.session_state['auto_toggle'] == "entry":
             auto_truck_id = f"TRK-{random.randint(1000, 9999)}"
             new_entry = pd.DataFrame([{
                 "Truck_ID": auto_truck_id, 
-                "Entry_Time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), 
+                "Entry_Time": now.strftime("%Y-%m-%d %H:%M:%S"), 
                 "Exit_Time": "Pending", 
+                "Warehouse_Location": random.choice(locations),
                 "Status": "At Dock"
             }])
-            st.session_state['truck_logs'] = pd.concat([st.session_state['truck_logs'], new_entry], ignore_index=True)
-            st.success(f"Sensor triggered! {auto_truck_id} logged automatically at {datetime.now().strftime('%H:%M:%S')}")
-
-    with col2:
-        st.subheader("Log Truck Exit")
-        docked_trucks = st.session_state['truck_logs'][st.session_state['truck_logs']["Status"] == "At Dock"]["Truck_ID"].tolist()
-        
-        if len(docked_trucks) > 0:
-            exit_truck_id = st.selectbox("Select Truck to Dispatch", ["Select a Truck"] + docked_trucks)
-            if st.button("Log Exit Timestamp"):
-                if exit_truck_id != "Select a Truck":
-                    idx = st.session_state['truck_logs'].index[st.session_state['truck_logs']['Truck_ID'] == exit_truck_id].tolist()[-1]
-                    st.session_state['truck_logs'].at[idx, "Exit_Time"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                    st.session_state['truck_logs'].at[idx, "Status"] = "Dispatched"
-                    st.success(f"Truck {exit_truck_id} exited at {datetime.now().strftime('%H:%M:%S')}")
+            st.session_state['truck_logs'] = pd.concat([new_entry, st.session_state['truck_logs']], ignore_index=True)
+            st.toast(f"📡 Sensor Alert: {auto_truck_id} arrived automatically.", icon="🟢")
+            st.session_state['auto_toggle'] = "exit"
+            
         else:
-            st.info("No trucks currently at the dock.")
+            docked = st.session_state['truck_logs'][st.session_state['truck_logs']["Status"] == "At Dock"]
+            if not docked.empty:
+                idx = docked.index[-1]
+                t_id = st.session_state['truck_logs'].at[idx, "Truck_ID"]
+                st.session_state['truck_logs'].at[idx, "Exit_Time"] = now.strftime("%Y-%m-%d %H:%M:%S")
+                st.session_state['truck_logs'].at[idx, "Status"] = "Dispatched"
+                st.toast(f"📡 Sensor Alert: {t_id} dispatched automatically.", icon="🔴")
+            st.session_state['auto_toggle'] = "entry"
 
     st.markdown("---")
     st.subheader("Live Dockyard Activity Log")
     st.dataframe(st.session_state['truck_logs'], use_container_width=True)
-    render_footer()
 
 # ==========================================
-# PAGE 3: INVENTORY & QR TRACKING
+# PAGE 2: INVENTORY & QR TRACKING
 # ==========================================
 elif page == "Inventory & QR Tracking":
     st.title("📦 Inventory & Warehouse Tracing")
-    st.markdown("Trace batch locations, receive times, and link them to dispatch trucks.")
+    st.markdown("Pinpoint exact batch locations and link them to dispatch trucks.")
 
     col1, col2 = st.columns(2)
 
     with col1:
-        st.subheader("Scan/Receive New Batch")
-        batch_qr = st.text_input("Batch QR / ID Code", placeholder="e.g. QR-5542")
-        item_name = st.text_input("Product Description")
-        location = st.selectbox("Warehouse Location", ["Aisle 1 - Bin A", "Aisle 1 - Bin B", "Aisle 2 - Bin A", "Aisle 3 - Cold Storage"])
+        st.subheader("Receive New Batch")
+        batch_qr = st.text_input("Batch QR", placeholder="e.g. QR-5542")
+        item_name = st.text_input("Product")
+        side = st.selectbox("Warehouse Side", ["North Wing", "South Wing", "East Wing", "West Wing"])
+        aisle = st.text_input("Aisle Number", placeholder="e.g. Aisle 5")
+        bin_loc = st.text_input("Bin Location", placeholder="e.g. Bin B-2")
         
-        if st.button("Receive Inventory", type="primary"):
+        if st.button("Store Inventory", type="primary"):
             if batch_qr and item_name:
                 new_item = pd.DataFrame([{
-                    "Batch_QR": batch_qr, "Item_Name": item_name, "Location": location, 
+                    "Batch_QR": batch_qr, "Item_Name": item_name, "Warehouse_Side": side,
+                    "Aisle_Number": aisle, "Bin_Location": bin_loc,
                     "Time_Received": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), 
                     "Time_Dispatched": "N/A", "Dispatched_On_Truck": "N/A", "Status": "In Warehouse"
                 }])
-                st.session_state['inventory'] = pd.concat([st.session_state['inventory'], new_item], ignore_index=True)
-                st.success(f"Batch {batch_qr} stored in {location}.")
-            else:
-                st.warning("Please fill out QR Code and Product Description.")
+                st.session_state['inventory'] = pd.concat([new_item, st.session_state['inventory']], ignore_index=True)
+                st.success(f"Stored {batch_qr} at {side} > {aisle} > {bin_loc}.")
 
     with col2:
         st.subheader("Dispatch Batch")
         in_stock = st.session_state['inventory'][st.session_state['inventory']["Status"] == "In Warehouse"]["Batch_QR"].tolist()
-        
-        if len(in_stock) > 0:
-            dispatch_qr = st.selectbox("Select Batch QR to Dispatch", ["Select a Batch"] + in_stock)
-            dispatch_truck = st.text_input("Assign to Truck ID (e.g. TRK-1024)")
-
-            if st.button("Dispatch Inventory"):
-                if dispatch_qr != "Select a Batch" and dispatch_truck:
+        if in_stock:
+            dispatch_qr = st.selectbox("Select Batch QR", ["Select"] + in_stock)
+            dispatch_truck = st.text_input("Assign to Truck ID")
+            if st.button("Dispatch"):
+                if dispatch_qr != "Select" and dispatch_truck:
                     idx = st.session_state['inventory'].index[st.session_state['inventory']['Batch_QR'] == dispatch_qr].tolist()[0]
                     st.session_state['inventory'].at[idx, "Time_Dispatched"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     st.session_state['inventory'].at[idx, "Dispatched_On_Truck"] = dispatch_truck
                     st.session_state['inventory'].at[idx, "Status"] = "In Transit"
-                    st.success(f"Batch {dispatch_qr} dispatched on Truck {dispatch_truck}.")
-        else:
-            st.info("Warehouse is empty.")
+                    st.success(f"Dispatched {dispatch_qr} on {dispatch_truck}.")
 
     st.markdown("---")
     st.subheader("Warehouse Inventory Database")
     st.dataframe(st.session_state['inventory'], use_container_width=True)
-    render_footer()
 
 # ==========================================
-# PAGE 4: GPS & FLEET TRACKING
+# PAGE 3: GPS & FLEET TRACKING (LIVE ROUTING)
 # ==========================================
 elif page == "GPS & Fleet Tracking":
-    st.title("🛰️ Live GPS & Traffic Optimization")
-    st.markdown("Track active fleet routes, monitor traffic density, and calculate dynamic ETAs.")
+    st.title("🛰️ Live GPS & Route Tracing")
+    st.markdown("Real-time telemetry and dynamic routing for active fleets.")
 
-    trucks_in_transit = ["TRK-901", "TRK-902", "TRK-903", "TRK-881"]
-    selected_truck = st.selectbox("Select Active Truck to Track", trucks_in_transit)
-
-    # Simulating GPS Coordinates (Centered around Dubai)
-    lat = 25.2048 + np.random.uniform(-0.1, 0.1)
-    lon = 55.2708 + np.random.uniform(-0.1, 0.1)
-    
-    # Simulating Traffic and ETA math
-    distance_remaining = random.randint(15, 120) # km
-    
-    # Traffic Conditions Logic
-    traffic_states = [
-        ("🟢 Clear", random.randint(65, 85), 1.0),
-        ("🟡 Moderate", random.randint(40, 60), 1.3),
-        ("🔴 Heavy", random.randint(15, 35), 2.5)
+    # Fleet Data (Jebel Ali to various Dubai points)
+    hub_lat, hub_lon = 24.9857, 55.0273
+    destinations = [
+        {"id": "TRK-901", "dest": "DXB Airport", "d_lat": 25.2532, "d_lon": 55.3657},
+        {"id": "TRK-902", "dest": "Dubai Mall", "d_lat": 25.1972, "d_lon": 55.2744},
+        {"id": "TRK-903", "dest": "Dubai Marina", "d_lat": 25.0805, "d_lon": 55.1403},
+        {"id": "TRK-904", "dest": "Al Maktoum Int", "d_lat": 24.8966, "d_lon": 55.1605},
+        {"id": "TRK-905", "dest": "Sharjah Ind", "d_lat": 25.3134, "d_lon": 55.4055}
     ]
-    traffic_status, current_speed, traffic_multiplier = random.choice(traffic_states)
     
-    # Calculate ETA based on traffic multiplier
-    base_eta_hours = distance_remaining / current_speed
-    actual_eta_hours = base_eta_hours * traffic_multiplier
-    estimated_arrival = datetime.now() + timedelta(hours=actual_eta_hours)
+    # Calculate simulated current positions
+    fleet_data = []
+    for d in destinations:
+        progress = random.uniform(0.1, 0.9)
+        c_lat = hub_lat + (d["d_lat"] - hub_lat) * progress
+        c_lon = hub_lon + (d["d_lon"] - hub_lon) * progress
+        fleet_data.append({
+            "Truck": d["id"], "Destination": d["dest"],
+            "start_lat": hub_lat, "start_lon": hub_lon,
+            "curr_lat": c_lat, "curr_lon": c_lon,
+            "dest_lat": d["d_lat"], "dest_lon": d["d_lon"],
+            "speed": random.randint(45, 90), "status": random.choice(["🟢 Clear", "🟡 Moderate"])
+        })
+    df_fleet = pd.DataFrame(fleet_data)
 
-    col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Current Speed", f"{current_speed} km/h")
-    col2.metric("Distance Remaining", f"{distance_remaining} km")
-    col3.metric("Traffic Condition", traffic_status)
-    col4.metric("Estimated Arrival (ETA)", estimated_arrival.strftime("%I:%M %p"))
+    st.dataframe(df_fleet[["Truck", "Destination", "speed", "status"]], use_container_width=True)
 
-    st.markdown("### Live Map Feed")
-    map_data = pd.DataFrame({'lat': [lat], 'lon': [lon]})
-    st.map(map_data, zoom=10)
-    render_footer()
+    # Pydeck Interactive Map
+    st.markdown("### Active Route Tracing")
+    
+    # Layer 1: The routes (Lines from Hub to Destination)
+    layer_routes = pdk.Layer(
+        "LineLayer",
+        df_fleet,
+        get_source_position=["start_lon", "start_lat"],
+        get_target_position=["dest_lon", "dest_lat"],
+        get_color=[200, 200, 200, 100],
+        get_width=3,
+    )
+    
+    # Layer 2: Current Truck Positions
+    layer_trucks = pdk.Layer(
+        "ScatterplotLayer",
+        df_fleet,
+        get_position=["curr_lon", "curr_lat"],
+        get_color=[0, 92, 153, 255], # Matches primary theme color
+        get_radius=800,
+        pickable=True
+    )
+    
+    view_state = pdk.ViewState(latitude=25.12, longitude=55.20, zoom=9, pitch=45)
+    st.pydeck_chart(pdk.Deck(layers=[layer_routes, layer_trucks], initial_view_state=view_state, tooltip={"text": "{Truck} routing to {Destination}"}))
+
+# ==========================================
+# PAGE 4: ABOUT STORMNODE
+# ==========================================
+elif page == "About StormNode":
+    st.title("⚡ About StormNode Logistics")
+    st.markdown("### Powering the Connected Supply Chain")
+    st.markdown("""
+    **StormNode Logistics** is a next-generation freight and warehousing startup designed to bridge the gap between heavy physical freight and cutting-edge digital infrastructure. 
+    
+    Founded in 2024, our mission is to eliminate supply chain opacity. Traditional logistics rely on manual data entry and fragmented tracking systems. At StormNode, we treat every warehouse, truck, and cargo batch as a "node" in a highly connected, automated neural network.
+    """)
 
 # --- SIDEBAR ACADEMIC CREDITS ---
 st.sidebar.markdown("---")
 st.sidebar.markdown(
     "<div style='font-size: 13px; color: gray;'>"
     "<b>App Developer:</b><br>"
-    "[Your Name]<br>"
-    "<b>Roll No:</b> [Your Roll Number]<br><br>"
+    "Syed Ali Kavish Abdi<br>"
+    "<b>Batch:</b> MGB OCT 25<br>"
+    "<b>Roll No:</b> MS25GLS138<br><br>"
     "<b>SP Jain School of Global Management</b><br>"
     "<i>Under the guidance of Prof. Rajiv Asrekar</i>"
     "</div>", 
