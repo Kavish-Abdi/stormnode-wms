@@ -124,7 +124,6 @@ if page == "Dockyard Management":
         try:
             update_time = datetime.strptime(row['Last_Updated'], "%Y-%m-%d %H:%M:%S")
             if (now - update_time).total_seconds() < 65:
-                # Returns a bright cyan highlight for 60 seconds
                 return ['background-color: rgba(0, 210, 255, 0.4); color: white;'] * len(row)
         except:
             pass
@@ -137,16 +136,16 @@ if page == "Dockyard Management":
 
     st.markdown("---")
     st.subheader("🟢 Active Fleet (At Dock)")
-    st.dataframe(df_docked.style.apply(highlight_recent, axis=1), use_container_width=True)
+    st.dataframe(df_docked.style.apply(highlight_recent, axis=1), width="stretch")
 
     st.markdown("---")
     st.subheader("🔴 Dispatched Log")
-    st.dataframe(df_dispatched.style.apply(highlight_recent, axis=1), use_container_width=True)
+    st.dataframe(df_dispatched.style.apply(highlight_recent, axis=1), width="stretch")
 
     render_footer()
 
 # ==========================================
-# PAGE 2: INVENTORY & QR TRACKING
+# PAGE 2: INVENTORY & QR Tracking
 # ==========================================
 elif page == "Inventory & QR Tracking":
     st.title("📦 Inventory & Warehouse Tracing")
@@ -189,7 +188,7 @@ elif page == "Inventory & QR Tracking":
 
     st.markdown("---")
     st.subheader("Warehouse Inventory Database")
-    st.dataframe(st.session_state['inventory'], use_container_width=True)
+    st.dataframe(st.session_state['inventory'], width="stretch")
     
     render_footer()
 
@@ -224,7 +223,7 @@ elif page == "GPS & Fleet Tracking":
         })
     df_fleet = pd.DataFrame(fleet_data)
 
-    st.dataframe(df_fleet[["Truck", "Destination", "speed", "status"]], use_container_width=True)
+    st.dataframe(df_fleet[["Truck", "Destination", "speed", "status"]], width="stretch")
 
     st.markdown("### Active Route Tracing")
     
