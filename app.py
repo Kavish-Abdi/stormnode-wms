@@ -26,12 +26,21 @@ st.sidebar.markdown(
 def render_footer():
     st.markdown("---")
     st.markdown(
-        "<div style='text-align: center; color: #C5C6C7; font-size: 14px;'>"
-        "<strong>StormNode Logistics</strong> | Est. 2024<br>"
+        "<div style='text-align: center; font-family: \"Times New Roman\", Times, serif; color: #C5C6C7; font-size: 14px;'>"
+        "<strong>StormNode Logistics</strong> | Est. 2026<br>"
         "<em>Powering the Connected Supply Chain</em>"
         "</div>", 
         unsafe_allow_html=True
     )
+
+# Audio Trigger Function
+if 'trigger_sound' not in st.session_state:
+    st.session_state['trigger_sound'] = False
+
+if st.session_state['trigger_sound']:
+    # Plays a clean notification 'ding'
+    st.markdown("""<audio autoplay><source src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" type="audio/mpeg"></audio>""", unsafe_allow_html=True)
+    st.session_state['trigger_sound'] = False
 
 # --- INITIALIZE SYNTHETIC DATABASE (Session State) ---
 if 'truck_logs' not in st.session_state:
@@ -82,7 +91,7 @@ page = st.sidebar.radio("Main Menu", [
 # PAGE 1: DOCKYARD MANAGEMENT
 # ==========================================
 if page == "Dockyard Management":
-    # Autorefresh isolated to this page to prevent global crashes
+    # Autorefresh isolated to this page
     count = st_autorefresh(interval=60000, limit=1000, key="dockyard_auto")
     
     st.title("🚛 Dockyard Management")
@@ -107,6 +116,8 @@ if page == "Dockyard Management":
             st.session_state['truck_logs'] = pd.concat([new_entry, st.session_state['truck_logs']], ignore_index=True)
             st.toast(f"📡 Sensor Alert: {auto_truck_id} arrived automatically.", icon="🟢")
             st.session_state['auto_toggle'] = "exit"
+            st.session_state['trigger_sound'] = True
+            st.rerun() # Forces the app to catch the sound trigger instantly
             
         else:
             docked = st.session_state['truck_logs'][st.session_state['truck_logs']["Status"] == "At Dock"]
@@ -118,34 +129,60 @@ if page == "Dockyard Management":
                 st.session_state['truck_logs'].at[idx, "Last_Updated"] = now.strftime("%Y-%m-%d %H:%M:%S")
                 st.toast(f"📡 Sensor Alert: {t_id} dispatched automatically.", icon="🔴")
             st.session_state['auto_toggle'] = "entry"
-
-    # STYLING FUNCTION FOR NEW ROWS
-    def highlight_recent(row):
-        try:
-            update_time = datetime.strptime(row['Last_Updated'], "%Y-%m-%d %H:%M:%S")
-            if (now - update_time).total_seconds() < 65:
-                return ['background-color: rgba(0, 210, 255, 0.4); color: white;'] * len(row)
-        except:
-            pass
-        return [''] * len(row)
+            st.session_state['trigger_sound'] = True
+            st.rerun()
 
     # SPLIT DATA INTO TWO TABLES
     df = st.session_state['truck_logs']
-    df_docked = df[df["Status"] == "At Dock"].drop(columns=["Last_Updated"])
-    df_dispatched = df[df["Status"] == "Dispatched"].drop(columns=["Last_Updated"])
+    df_docked = df[df["Status"] == "At Dock"]
+    df_dispatched = df[df["Status"] == "Dispatched"]
 
     st.markdown("---")
     st.subheader("🟢 Active Fleet (At Dock)")
-    st.dataframe(df_docked.style.apply(highlight_recent, axis=1), width="stretch")
+    
+    # CUSTOM HTML/CSS TABLE TO FORCE THE 10-SECOND BLINK
+    css_animation = """
+    <style>
+    @keyframes blink-animation {
+        0% { background-color: #00D2FF; color: #000000; }
+        50% { background-color: transparent; color: #C5C6C7; }
+        100% { background-color: #00D2FF; color: #000000; }
+    }
+    .blinking-row {
+        /* Runs the 1-second animation 10 times, then stops */
+        animation: blink-animation 1s linear 10; 
+    }
+    .custom-table { width: 100%; text-align: left; border-collapse: collapse; color: #C5C6C7; font-size: 14px; }
+    .custom-table th, .custom-table td { padding: 10px; border-bottom: 1px solid #1F2833; }
+    .custom-table th { color: #ffffff; font-weight: bold; background-color: #1A2235; }
+    </style>
+    """
+    
+    html_table = f"{css_animation}<table class='custom-table'><thead><tr><th>Truck ID</th><th>Entry Time</th><th>Exit Time</th><th>Location</th><th>Status</th></tr></thead><tbody>"
+    
+    for _, row in df_docked.iterrows():
+        update_time = datetime.strptime(row['Last_Updated'], "%Y-%m-%d %H:%M:%S")
+        time_diff = (now - update_time).total_seconds()
+        
+        # Apply the blinking class ONLY if updated in the last 15 seconds (to catch the refresh window)
+        row_class = "blinking-row" if time_diff < 15 else ""
+        
+        html_table += f"<tr class='{row_class}'><td>{row['Truck_ID']}</td><td>{row['Entry_Time']}</td><td>{row['Exit_Time']}</td><td>{row['Warehouse_Location']}</td><td>{row['Status']}</td></tr>"
+        
+    html_table += "</tbody></table>"
+    
+    # Render the custom blinking table
+    st.markdown(html_table, unsafe_allow_html=True)
 
     st.markdown("---")
     st.subheader("🔴 Dispatched Log")
-    st.dataframe(df_dispatched.style.apply(highlight_recent, axis=1), width="stretch")
+    # Using standard dataframe for the historical log since it doesn't need to blink
+    st.dataframe(df_dispatched.drop(columns=["Last_Updated"]), width="stretch")
 
     render_footer()
 
 # ==========================================
-# PAGE 2: INVENTORY & QR Tracking
+# PAGE 2: INVENTORY & QR TRACKING
 # ==========================================
 elif page == "Inventory & QR Tracking":
     st.title("📦 Inventory & Warehouse Tracing")
@@ -171,6 +208,8 @@ elif page == "Inventory & QR Tracking":
                 }])
                 st.session_state['inventory'] = pd.concat([new_item, st.session_state['inventory']], ignore_index=True)
                 st.success(f"Stored {batch_qr} at {side} > {aisle} > {bin_loc}.")
+                st.session_state['trigger_sound'] = True
+                st.rerun()
 
     with col2:
         st.subheader("Dispatch Batch")
@@ -185,6 +224,8 @@ elif page == "Inventory & QR Tracking":
                     st.session_state['inventory'].at[idx, "Dispatched_On_Truck"] = dispatch_truck
                     st.session_state['inventory'].at[idx, "Status"] = "In Transit"
                     st.success(f"Dispatched {dispatch_qr} on {dispatch_truck}.")
+                    st.session_state['trigger_sound'] = True
+                    st.rerun()
 
     st.markdown("---")
     st.subheader("Warehouse Inventory Database")
@@ -259,14 +300,14 @@ elif page == "About StormNode":
     st.markdown("""
     **StormNode Logistics** is a next-generation freight and warehousing startup designed to bridge the gap between heavy physical freight and cutting-edge digital infrastructure. 
     
-    Founded in 2024, our mission is to eliminate supply chain opacity. Traditional logistics rely on manual data entry and fragmented tracking systems. At StormNode, we treat every warehouse, truck, and cargo batch as a "node" in a highly connected, automated neural network.
+    Founded in 2026, our mission is to eliminate supply chain opacity. Traditional logistics rely on manual data entry and fragmented tracking systems. At StormNode, we treat every warehouse, truck, and cargo batch as a "node" in a highly connected, automated neural network.
     """)
     render_footer()
 
 # --- SIDEBAR ACADEMIC CREDITS ---
 st.sidebar.markdown("---")
 st.sidebar.markdown(
-    "<div style='font-size: 13px; color: #C5C6C7;'>"
+    "<div style='font-size: 13px; color: #C5C6C7; font-family: \"Times New Roman\", Times, serif;'>"
     "<b>App Developer:</b><br>"
     "Syed Ali Kavish Abdi<br>"
     "<b>Batch:</b> MGB OCT 25<br>"
