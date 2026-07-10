@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
-import random
 from datetime import datetime, timedelta
+import random
 import pydeck as pdk
 from streamlit_autorefresh import st_autorefresh
 
@@ -11,7 +11,27 @@ st.set_page_config(page_title="StormNode Logistics", page_icon="⚡", layout="wi
 try:
     st.sidebar.image("logo1.png")
 except:
-    st.sidebar.title("⚡ StormNode Logistics")
+    st.sidebar.title("⚡")
+
+# --- CUSTOM BRANDING (TIMES NEW ROMAN & BRIGHT) ---
+st.sidebar.markdown(
+    "<div style='text-align: center; font-family: \"Times New Roman\", Times, serif; color: #00D2FF; font-size: 26px; font-weight: bold; margin-top: -15px;'>"
+    "StormNode Logistics<br>"
+    "<span style='font-size: 14px; color: #00F0FF; font-style: italic;'>Powering the Connected Supply Chain</span>"
+    "</div>",
+    unsafe_allow_html=True
+)
+
+# --- HELPER FUNCTIONS ---
+def render_footer():
+    st.markdown("---")
+    st.markdown(
+        "<div style='text-align: center; color: #C5C6C7; font-size: 14px;'>"
+        "<strong>StormNode Logistics</strong> | Est. 2024<br>"
+        "<em>Powering the Connected Supply Chain</em>"
+        "</div>", 
+        unsafe_allow_html=True
+    )
 
 # --- INITIALIZE SYNTHETIC DATABASE (Session State) ---
 if 'truck_logs' not in st.session_state:
@@ -24,7 +44,8 @@ if 'truck_logs' not in st.session_state:
             "Entry_Time": entry_time.strftime("%Y-%m-%d %H:%M:%S"), 
             "Exit_Time": "Pending" if i % 2 == 0 else (entry_time + timedelta(minutes=45)).strftime("%Y-%m-%d %H:%M:%S"), 
             "Warehouse_Location": random.choice(locations),
-            "Status": "At Dock" if i % 2 == 0 else "Dispatched"
+            "Status": "At Dock" if i % 2 == 0 else "Dispatched",
+            "Last_Updated": entry_time.strftime("%Y-%m-%d %H:%M:%S")
         })
     st.session_state['truck_logs'] = pd.DataFrame(synthetic_trucks)
     st.session_state['last_auto_update'] = datetime.now()
@@ -61,7 +82,7 @@ page = st.sidebar.radio("Main Menu", [
 # PAGE 1: DOCKYARD MANAGEMENT
 # ==========================================
 if page == "Dockyard Management":
-    # Autorefresh is strictly isolated to this page to prevent global crashes
+    # Autorefresh isolated to this page to prevent global crashes
     count = st_autorefresh(interval=60000, limit=1000, key="dockyard_auto")
     
     st.title("🚛 Dockyard Management")
@@ -80,7 +101,8 @@ if page == "Dockyard Management":
                 "Entry_Time": now.strftime("%Y-%m-%d %H:%M:%S"), 
                 "Exit_Time": "Pending", 
                 "Warehouse_Location": random.choice(locations),
-                "Status": "At Dock"
+                "Status": "At Dock",
+                "Last_Updated": now.strftime("%Y-%m-%d %H:%M:%S")
             }])
             st.session_state['truck_logs'] = pd.concat([new_entry, st.session_state['truck_logs']], ignore_index=True)
             st.toast(f"📡 Sensor Alert: {auto_truck_id} arrived automatically.", icon="🟢")
@@ -93,12 +115,35 @@ if page == "Dockyard Management":
                 t_id = st.session_state['truck_logs'].at[idx, "Truck_ID"]
                 st.session_state['truck_logs'].at[idx, "Exit_Time"] = now.strftime("%Y-%m-%d %H:%M:%S")
                 st.session_state['truck_logs'].at[idx, "Status"] = "Dispatched"
+                st.session_state['truck_logs'].at[idx, "Last_Updated"] = now.strftime("%Y-%m-%d %H:%M:%S")
                 st.toast(f"📡 Sensor Alert: {t_id} dispatched automatically.", icon="🔴")
             st.session_state['auto_toggle'] = "entry"
 
+    # STYLING FUNCTION FOR NEW ROWS
+    def highlight_recent(row):
+        try:
+            update_time = datetime.strptime(row['Last_Updated'], "%Y-%m-%d %H:%M:%S")
+            if (now - update_time).total_seconds() < 65:
+                # Returns a bright cyan highlight for 60 seconds
+                return ['background-color: rgba(0, 210, 255, 0.4); color: white;'] * len(row)
+        except:
+            pass
+        return [''] * len(row)
+
+    # SPLIT DATA INTO TWO TABLES
+    df = st.session_state['truck_logs']
+    df_docked = df[df["Status"] == "At Dock"].drop(columns=["Last_Updated"])
+    df_dispatched = df[df["Status"] == "Dispatched"].drop(columns=["Last_Updated"])
+
     st.markdown("---")
-    st.subheader("Live Dockyard Activity Log")
-    st.dataframe(st.session_state['truck_logs'], use_container_width=True)
+    st.subheader("🟢 Active Fleet (At Dock)")
+    st.dataframe(df_docked.style.apply(highlight_recent, axis=1), use_container_width=True)
+
+    st.markdown("---")
+    st.subheader("🔴 Dispatched Log")
+    st.dataframe(df_dispatched.style.apply(highlight_recent, axis=1), use_container_width=True)
+
+    render_footer()
 
 # ==========================================
 # PAGE 2: INVENTORY & QR TRACKING
@@ -145,6 +190,8 @@ elif page == "Inventory & QR Tracking":
     st.markdown("---")
     st.subheader("Warehouse Inventory Database")
     st.dataframe(st.session_state['inventory'], use_container_width=True)
+    
+    render_footer()
 
 # ==========================================
 # PAGE 3: GPS & FLEET TRACKING (LIVE ROUTING)
@@ -153,7 +200,7 @@ elif page == "GPS & Fleet Tracking":
     st.title("🛰️ Live GPS & Route Tracing")
     st.markdown("Real-time telemetry and dynamic routing for active fleets.")
 
-    # Fleet Data (Jebel Ali to various Dubai points)
+    # Fleet Data
     hub_lat, hub_lon = 24.9857, 55.0273
     destinations = [
         {"id": "TRK-901", "dest": "DXB Airport", "d_lat": 25.2532, "d_lon": 55.3657},
@@ -163,7 +210,6 @@ elif page == "GPS & Fleet Tracking":
         {"id": "TRK-905", "dest": "Sharjah Ind", "d_lat": 25.3134, "d_lon": 55.4055}
     ]
     
-    # Calculate simulated current positions (Strictly forcing float to prevent pydeck crashes)
     fleet_data = []
     for d in destinations:
         progress = float(random.uniform(0.1, 0.9))
@@ -182,7 +228,6 @@ elif page == "GPS & Fleet Tracking":
 
     st.markdown("### Active Route Tracing")
     
-    # Layer 1: The routes (Lines from Hub to Destination)
     layer_routes = pdk.Layer(
         "LineLayer",
         df_fleet,
@@ -192,18 +237,19 @@ elif page == "GPS & Fleet Tracking":
         get_width=3,
     )
     
-    # Layer 2: Current Truck Positions
     layer_trucks = pdk.Layer(
         "ScatterplotLayer",
         df_fleet,
         get_position=["curr_lon", "curr_lat"],
-        get_color=[0, 210, 255, 255], # Neon cyan to match the premium theme
+        get_color=[0, 210, 255, 255], 
         get_radius=800,
         pickable=True
     )
     
     view_state = pdk.ViewState(latitude=25.12, longitude=55.20, zoom=9, pitch=45)
     st.pydeck_chart(pdk.Deck(layers=[layer_routes, layer_trucks], initial_view_state=view_state, tooltip={"text": "{Truck} routing to {Destination}"}))
+    
+    render_footer()
 
 # ==========================================
 # PAGE 4: ABOUT STORMNODE
@@ -216,6 +262,7 @@ elif page == "About StormNode":
     
     Founded in 2024, our mission is to eliminate supply chain opacity. Traditional logistics rely on manual data entry and fragmented tracking systems. At StormNode, we treat every warehouse, truck, and cargo batch as a "node" in a highly connected, automated neural network.
     """)
+    render_footer()
 
 # --- SIDEBAR ACADEMIC CREDITS ---
 st.sidebar.markdown("---")
