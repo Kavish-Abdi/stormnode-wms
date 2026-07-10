@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime, timedelta
 import random
-import pydeck as pdk
+import plotly.graph_objects as go
 from streamlit_autorefresh import st_autorefresh
 
 # --- PAGE CONFIGURATION & LOGO ---
@@ -38,11 +38,9 @@ if 'trigger_sound' not in st.session_state:
     st.session_state['trigger_sound'] = None
 
 if st.session_state['trigger_sound'] == "entry":
-    # Sharp 'Ding' for Entry
     st.markdown("""<audio autoplay><source src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" type="audio/mpeg"></audio>""", unsafe_allow_html=True)
     st.session_state['trigger_sound'] = None
 elif st.session_state['trigger_sound'] == "exit":
-    # Digital 'Chime/Swoosh' for Exit
     st.markdown("""<audio autoplay><source src="https://assets.mixkit.co/active_storage/sfx/1003/1003-preview.mp3" type="audio/mpeg"></audio>""", unsafe_allow_html=True)
     st.session_state['trigger_sound'] = None
 
@@ -153,12 +151,8 @@ if page == "Dockyard Management":
         50% { background-color: transparent; color: #C5C6C7; }
         100% { background-color: #00FF55; color: #000000; }
     }
-    .blinking-row-cyan {
-        animation: blink-animation-cyan 1s linear 10; 
-    }
-    .blinking-row-green {
-        animation: blink-animation-green 1s linear 10; 
-    }
+    .blinking-row-cyan { animation: blink-animation-cyan 1s linear 10; }
+    .blinking-row-green { animation: blink-animation-green 1s linear 10; }
     .custom-table { width: 100%; text-align: left; border-collapse: collapse; color: #C5C6C7; font-size: 14px; margin-bottom: 20px;}
     .custom-table th, .custom-table td { padding: 10px; border-bottom: 1px solid #1F2833; }
     .custom-table th { color: #ffffff; font-weight: bold; background-color: #1A2235; }
@@ -167,8 +161,6 @@ if page == "Dockyard Management":
     
     st.markdown("---")
     st.subheader("🟢 Active Fleet (At Dock)")
-    
-    # Render Cyan Blinking Table for Entries
     html_docked = f"{css_animations}<table class='custom-table'><thead><tr><th>Truck ID</th><th>Entry Time</th><th>Exit Time</th><th>Location</th><th>Status</th></tr></thead><tbody>"
     for _, row in df_docked.iterrows():
         update_time = datetime.strptime(row['Last_Updated'], "%Y-%m-%d %H:%M:%S")
@@ -180,8 +172,6 @@ if page == "Dockyard Management":
 
     st.markdown("---")
     st.subheader("🔴 Dispatched Log")
-    
-    # Render Green Blinking Table for Exits
     html_dispatched = f"<table class='custom-table'><thead><tr><th>Truck ID</th><th>Entry Time</th><th>Exit Time</th><th>Location</th><th>Status</th></tr></thead><tbody>"
     for _, row in df_dispatched.iterrows():
         update_time = datetime.strptime(row['Last_Updated'], "%Y-%m-%d %H:%M:%S")
@@ -241,12 +231,12 @@ elif page == "Inventory & QR Tracking":
 
     st.markdown("---")
     st.subheader("Warehouse Inventory Database")
-    st.dataframe(st.session_state['inventory'], width="stretch")
+    st.dataframe(st.session_state['inventory'])
     
     render_footer()
 
 # ==========================================
-# PAGE 3: GPS & FLEET TRACKING (LIVE ROUTING)
+# PAGE 3: GPS & FLEET TRACKING (PLOTLY FIX)
 # ==========================================
 elif page == "GPS & Fleet Tracking":
     st.title("🛰️ Live GPS & Route Tracing")
@@ -275,30 +265,43 @@ elif page == "GPS & Fleet Tracking":
         })
     df_fleet = pd.DataFrame(fleet_data)
 
-    st.dataframe(df_fleet[["Truck", "Destination", "speed", "status"]], width="stretch")
+    st.dataframe(df_fleet[["Truck", "Destination", "speed", "status"]])
 
     st.markdown("### Active Route Tracing")
     
-    layer_routes = pdk.Layer(
-        "LineLayer",
-        df_fleet,
-        get_source_position=["start_lon", "start_lat"],
-        get_target_position=["dest_lon", "dest_lat"],
-        get_color=[100, 100, 100, 150],
-        get_width=3,
+    # STABLE PLOTLY MAP REPLACEMENT
+    fig = go.Figure()
+    
+    for d in fleet_data:
+        # Draw the route line
+        fig.add_trace(go.Scattermapbox(
+            mode="lines",
+            lon=[d['start_lon'], d['curr_lon'], d['dest_lon']],
+            lat=[d['start_lat'], d['curr_lat'], d['dest_lat']],
+            line=dict(width=2, color='rgba(255, 255, 255, 0.3)'),
+            hoverinfo='none'
+        ))
+        # Draw the truck marker
+        fig.add_trace(go.Scattermapbox(
+            mode="markers",
+            lon=[d['curr_lon']],
+            lat=[d['curr_lat']],
+            marker=dict(size=14, color='#00D2FF'),
+            name=d['Truck'],
+            text=f"{d['Truck']} heading to {d['Destination']}",
+            hoverinfo='text'
+        ))
+
+    fig.update_layout(
+        mapbox_style="carto-darkmatter",
+        mapbox_zoom=9,
+        mapbox_center={"lat": 25.12, "lon": 55.20},
+        margin={"r":0,"t":0,"l":0,"b":0},
+        showlegend=False,
+        height=500
     )
     
-    layer_trucks = pdk.Layer(
-        "ScatterplotLayer",
-        df_fleet,
-        get_position=["curr_lon", "curr_lat"],
-        get_color=[0, 210, 255, 255], 
-        get_radius=800,
-        pickable=True
-    )
-    
-    view_state = pdk.ViewState(latitude=25.12, longitude=55.20, zoom=9, pitch=45)
-    st.pydeck_chart(pdk.Deck(layers=[layer_routes, layer_trucks], initial_view_state=view_state, tooltip={"text": "{Truck} routing to {Destination}"}))
+    st.plotly_chart(fig, use_container_width=True)
     
     render_footer()
 
