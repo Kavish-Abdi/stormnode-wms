@@ -1,6 +1,6 @@
+setuptools
+wheel
 streamlit
 pandas
-numpy<2.0.0
-pyarrow<15.0.0
 pydeck
 streamlit-autorefresh
