@@ -1,8 +1,7 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
-from datetime import datetime, timedelta
 import random
+from datetime import datetime, timedelta
 import pydeck as pdk
 from streamlit_autorefresh import st_autorefresh
 
@@ -29,7 +28,7 @@ if 'truck_logs' not in st.session_state:
         })
     st.session_state['truck_logs'] = pd.DataFrame(synthetic_trucks)
     st.session_state['last_auto_update'] = datetime.now()
-    st.session_state['auto_toggle'] = "entry" # Toggles between auto-entry and auto-exit
+    st.session_state['auto_toggle'] = "entry" 
 
 if 'inventory' not in st.session_state:
     synthetic_inv = []
@@ -62,7 +61,7 @@ page = st.sidebar.radio("Main Menu", [
 # PAGE 1: DOCKYARD MANAGEMENT
 # ==========================================
 if page == "Dockyard Management":
-    # 60-second background refresh for automation
+    # Autorefresh is strictly isolated to this page to prevent global crashes
     count = st_autorefresh(interval=60000, limit=1000, key="dockyard_auto")
     
     st.title("🚛 Dockyard Management")
@@ -164,12 +163,12 @@ elif page == "GPS & Fleet Tracking":
         {"id": "TRK-905", "dest": "Sharjah Ind", "d_lat": 25.3134, "d_lon": 55.4055}
     ]
     
-    # Calculate simulated current positions
+    # Calculate simulated current positions (Strictly forcing float to prevent pydeck crashes)
     fleet_data = []
     for d in destinations:
-        progress = random.uniform(0.1, 0.9)
-        c_lat = hub_lat + (d["d_lat"] - hub_lat) * progress
-        c_lon = hub_lon + (d["d_lon"] - hub_lon) * progress
+        progress = float(random.uniform(0.1, 0.9))
+        c_lat = float(hub_lat + (d["d_lat"] - hub_lat) * progress)
+        c_lon = float(hub_lon + (d["d_lon"] - hub_lon) * progress)
         fleet_data.append({
             "Truck": d["id"], "Destination": d["dest"],
             "start_lat": hub_lat, "start_lon": hub_lon,
@@ -181,7 +180,6 @@ elif page == "GPS & Fleet Tracking":
 
     st.dataframe(df_fleet[["Truck", "Destination", "speed", "status"]], use_container_width=True)
 
-    # Pydeck Interactive Map
     st.markdown("### Active Route Tracing")
     
     # Layer 1: The routes (Lines from Hub to Destination)
@@ -190,7 +188,7 @@ elif page == "GPS & Fleet Tracking":
         df_fleet,
         get_source_position=["start_lon", "start_lat"],
         get_target_position=["dest_lon", "dest_lat"],
-        get_color=[200, 200, 200, 100],
+        get_color=[100, 100, 100, 150],
         get_width=3,
     )
     
@@ -199,7 +197,7 @@ elif page == "GPS & Fleet Tracking":
         "ScatterplotLayer",
         df_fleet,
         get_position=["curr_lon", "curr_lat"],
-        get_color=[0, 92, 153, 255], # Matches primary theme color
+        get_color=[0, 210, 255, 255], # Neon cyan to match the premium theme
         get_radius=800,
         pickable=True
     )
@@ -222,7 +220,7 @@ elif page == "About StormNode":
 # --- SIDEBAR ACADEMIC CREDITS ---
 st.sidebar.markdown("---")
 st.sidebar.markdown(
-    "<div style='font-size: 13px; color: gray;'>"
+    "<div style='font-size: 13px; color: #C5C6C7;'>"
     "<b>App Developer:</b><br>"
     "Syed Ali Kavish Abdi<br>"
     "<b>Batch:</b> MGB OCT 25<br>"
