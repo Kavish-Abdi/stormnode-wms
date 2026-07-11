@@ -47,7 +47,6 @@ def render_footer():
     )
 
 # --- GLOBAL AUTOREFRESH & SESSION INIT ---
-# This ensures the app reruns every 60 seconds regardless of what page is open
 st_autorefresh(interval=60000, limit=1000, key="global_autorefresh")
 
 if 'trigger_sound' not in st.session_state:
@@ -98,9 +97,8 @@ page = st.sidebar.radio("Main Menu", [
 ])
 
 # --- GLOBAL BACKGROUND EVENT SIMULATOR ---
-# This executes unconditionally on every rerun, checking if 60 seconds have passed.
 now = datetime.now()
-if (now - st.session_state['last_auto_update']).total_seconds() >= 58:  # 58 seconds to account for execution drift
+if (now - st.session_state['last_auto_update']).total_seconds() >= 58:  
     st.session_state['last_auto_update'] = now
     locations = ["Whse A - Dock 1", "Whse A - Dock 2", "Whse B - Dock 1", "Whse C - Heavy Freight"]
     
@@ -118,7 +116,6 @@ if (now - st.session_state['last_auto_update']).total_seconds() >= 58:  # 58 sec
         st.session_state['auto_toggle'] = "exit"
         st.session_state['trigger_sound'] = "entry"
         
-        # Only show notification toast if NOT on Dockyard page
         if page != "Dockyard Management":
             st.toast(f"📡 Fleet Update: {auto_truck_id} has arrived at the dock.", icon="🟢")
             
@@ -134,11 +131,10 @@ if (now - st.session_state['last_auto_update']).total_seconds() >= 58:  # 58 sec
         st.session_state['auto_toggle'] = "entry"
         st.session_state['trigger_sound'] = "exit"
         
-        # Only show notification toast if NOT on Dockyard page
         if page != "Dockyard Management":
             st.toast(f"📡 Fleet Update: {t_id} was safely dispatched.", icon="🔴")
 
-# --- PROCESS GLOBAL AUDIO (Before page rendering) ---
+# --- PROCESS GLOBAL AUDIO ---
 audio_tag = ""
 if st.session_state['trigger_sound'] == "entry":
     audio_tag = f"""<audio autoplay><source src="https://assets.mixkit.co/active_storage/sfx/2573/2573-preview.mp3?t={time.time()}" type="audio/mpeg"></audio>"""
@@ -147,7 +143,6 @@ elif st.session_state['trigger_sound'] == "exit":
     audio_tag = f"""<audio autoplay><source src="https://assets.mixkit.co/active_storage/sfx/2574/2574-preview.mp3?t={time.time()}" type="audio/mpeg"></audio>"""
     st.session_state['trigger_sound'] = None
 
-# Play the sound instantly if we are NOT on the Dockyard page (otherwise it waits to sync with tables)
 if page != "Dockyard Management" and audio_tag:
     st.markdown(audio_tag, unsafe_allow_html=True)
 
@@ -159,13 +154,10 @@ if page == "Dockyard Management":
     st.title("🚛 Dockyard Management")
     st.markdown("Automated gate sensors and real-time dispatch control.")
 
-    # SPLIT DATA INTO TWO TABLES
     df = st.session_state['truck_logs']
     df_docked = df[df["Status"] == "At Dock"]
     df_dispatched = df[df["Status"] == "Dispatched"]
 
-    # --- CUSTOM HTML/CSS FOR DUAL TABLE ANIMATIONS & SYNCED AUDIO ---
-    # The audio_tag is injected here so it renders in the exact millisecond as the table blink
     css_animations = f"""
     {audio_tag}
     <style>
@@ -259,12 +251,13 @@ elif page == "Inventory & QR Tracking":
 
     st.markdown("---")
     st.subheader("Warehouse Inventory Database")
-    st.dataframe(st.session_state['inventory'], use_container_width=True)
+    # THE FIX: Changed to width='stretch' to stop the crash
+    st.dataframe(st.session_state['inventory'], width="stretch")
     
     render_footer()
 
 # ==========================================
-# PAGE 3: GPS & FLEET TRACKING (PLOTLY FIX)
+# PAGE 3: GPS & FLEET TRACKING
 # ==========================================
 elif page == "GPS & Fleet Tracking":
     st.title("🛰️ Live GPS & Route Tracing")
@@ -293,14 +286,14 @@ elif page == "GPS & Fleet Tracking":
         })
     df_fleet = pd.DataFrame(fleet_data)
 
-    st.dataframe(df_fleet[["Truck", "Destination", "speed", "status"]], use_container_width=True)
+    # THE FIX: Changed to width='stretch'
+    st.dataframe(df_fleet[["Truck", "Destination", "speed", "status"]], width="stretch")
 
     st.markdown("### Active Route Tracing")
     
     fig = go.Figure()
     
     for d in fleet_data:
-        # Draw the route line
         fig.add_trace(go.Scattermapbox(
             mode="lines",
             lon=[d['start_lon'], d['curr_lon'], d['dest_lon']],
@@ -308,7 +301,6 @@ elif page == "GPS & Fleet Tracking":
             line=dict(width=2, color='rgba(255, 255, 255, 0.3)'),
             hoverinfo='none'
         ))
-        # Draw the truck marker
         fig.add_trace(go.Scattermapbox(
             mode="markers",
             lon=[d['curr_lon']],
@@ -328,7 +320,8 @@ elif page == "GPS & Fleet Tracking":
         height=500
     )
     
-    st.plotly_chart(fig, use_container_width=True)
+    # Removed the deprecated prop entirely here, Plotly handles width automatically
+    st.plotly_chart(fig)
     
     render_footer()
 
