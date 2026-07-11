@@ -251,7 +251,8 @@ elif page == "Inventory & QR Tracking":
 
     st.markdown("---")
     st.subheader("Warehouse Inventory Database")
-    st.dataframe(st.session_state['inventory'], width="stretch")
+    # FIX: Reverted to use_container_width=True
+    st.dataframe(st.session_state['inventory'], use_container_width=True)
     
     render_footer()
 
@@ -285,13 +286,13 @@ elif page == "GPS & Fleet Tracking":
         })
     df_fleet = pd.DataFrame(fleet_data)
 
-    st.dataframe(df_fleet[["Truck", "Destination", "speed", "status"]], width="stretch")
+    # FIX: Reverted to use_container_width=True
+    st.dataframe(df_fleet[["Truck", "Destination", "speed", "status"]], use_container_width=True)
 
     st.markdown("### Active Route Tracing")
     
     fig = go.Figure()
     
-    # THE FIX: Updated to Scattermap per Plotly's deprecation warning
     for d in fleet_data:
         fig.add_trace(go.Scattermap(
             mode="lines",
@@ -310,7 +311,6 @@ elif page == "GPS & Fleet Tracking":
             hoverinfo='text'
         ))
 
-    # THE FIX: Updated mapbox_ commands to map_ commands
     fig.update_layout(
         map_style="carto-darkmatter",
         map_zoom=9,
