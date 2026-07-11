@@ -17,7 +17,6 @@ except:
 # --- GLOBAL STYLES & CUSTOM BRANDING ---
 st.markdown("""
     <style>
-    /* Move Streamlit Notifications (Toasts) to the Top Right */
     div[data-testid="stToastContainer"] {
         top: 2rem;
         right: 2rem;
@@ -251,8 +250,9 @@ elif page == "Inventory & QR Tracking":
 
     st.markdown("---")
     st.subheader("Warehouse Inventory Database")
-    # FIX: Reverted to use_container_width=True
-    st.dataframe(st.session_state['inventory'], use_container_width=True)
+    
+    # THE FIX: Removed all width parameters completely
+    st.dataframe(st.session_state['inventory'])
     
     render_footer()
 
@@ -286,8 +286,8 @@ elif page == "GPS & Fleet Tracking":
         })
     df_fleet = pd.DataFrame(fleet_data)
 
-    # FIX: Reverted to use_container_width=True
-    st.dataframe(df_fleet[["Truck", "Destination", "speed", "status"]], use_container_width=True)
+    # THE FIX: Removed all width parameters completely
+    st.dataframe(df_fleet[["Truck", "Destination", "speed", "status"]])
 
     st.markdown("### Active Route Tracing")
     
@@ -320,6 +320,7 @@ elif page == "GPS & Fleet Tracking":
         height=500
     )
     
+    # THE FIX: Removed all width parameters completely
     st.plotly_chart(fig)
     
     render_footer()
