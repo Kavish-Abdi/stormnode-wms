@@ -129,7 +129,8 @@ if page == "Dockyard Management":
     # Determine exact audio tag and wipe state
     audio_tag = ""
     if st.session_state['trigger_sound'] == "entry":
-        audio_tag = f"""<audio autoplay><source src="https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3?t={time.time()}" type="audio/mpeg"></audio>"""
+        # UPDATED: Smooth double-chime, fits well with the exit sound
+        audio_tag = f"""<audio autoplay><source src="https://assets.mixkit.co/active_storage/sfx/2573/2573-preview.mp3?t={time.time()}" type="audio/mpeg"></audio>"""
         st.session_state['trigger_sound'] = None
     elif st.session_state['trigger_sound'] == "exit":
         audio_tag = f"""<audio autoplay><source src="https://assets.mixkit.co/active_storage/sfx/2574/2574-preview.mp3?t={time.time()}" type="audio/mpeg"></audio>"""
@@ -141,7 +142,6 @@ if page == "Dockyard Management":
     df_dispatched = df[df["Status"] == "Dispatched"]
 
     # --- CUSTOM HTML/CSS FOR DUAL TABLE ANIMATIONS & SYNCED AUDIO ---
-    # The audio_tag is injected directly into the CSS payload so they render in the exact same millisecond
     css_animations = f"""
     {audio_tag}
     <style>
@@ -236,7 +236,7 @@ elif page == "Inventory & QR Tracking":
     # Determine exact audio tag and wipe state for Inventory Page
     audio_tag = ""
     if st.session_state['trigger_sound'] == "entry":
-        audio_tag = f"""<audio autoplay><source src="https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3?t={time.time()}" type="audio/mpeg"></audio>"""
+        audio_tag = f"""<audio autoplay><source src="https://assets.mixkit.co/active_storage/sfx/2573/2573-preview.mp3?t={time.time()}" type="audio/mpeg"></audio>"""
         st.session_state['trigger_sound'] = None
     elif st.session_state['trigger_sound'] == "exit":
         audio_tag = f"""<audio autoplay><source src="https://assets.mixkit.co/active_storage/sfx/2574/2574-preview.mp3?t={time.time()}" type="audio/mpeg"></audio>"""
