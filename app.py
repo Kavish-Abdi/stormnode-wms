@@ -251,7 +251,6 @@ elif page == "Inventory & QR Tracking":
 
     st.markdown("---")
     st.subheader("Warehouse Inventory Database")
-    # THE FIX: Changed to width='stretch' to stop the crash
     st.dataframe(st.session_state['inventory'], width="stretch")
     
     render_footer()
@@ -286,22 +285,22 @@ elif page == "GPS & Fleet Tracking":
         })
     df_fleet = pd.DataFrame(fleet_data)
 
-    # THE FIX: Changed to width='stretch'
     st.dataframe(df_fleet[["Truck", "Destination", "speed", "status"]], width="stretch")
 
     st.markdown("### Active Route Tracing")
     
     fig = go.Figure()
     
+    # THE FIX: Updated to Scattermap per Plotly's deprecation warning
     for d in fleet_data:
-        fig.add_trace(go.Scattermapbox(
+        fig.add_trace(go.Scattermap(
             mode="lines",
             lon=[d['start_lon'], d['curr_lon'], d['dest_lon']],
             lat=[d['start_lat'], d['curr_lat'], d['dest_lat']],
             line=dict(width=2, color='rgba(255, 255, 255, 0.3)'),
             hoverinfo='none'
         ))
-        fig.add_trace(go.Scattermapbox(
+        fig.add_trace(go.Scattermap(
             mode="markers",
             lon=[d['curr_lon']],
             lat=[d['curr_lat']],
@@ -311,16 +310,16 @@ elif page == "GPS & Fleet Tracking":
             hoverinfo='text'
         ))
 
+    # THE FIX: Updated mapbox_ commands to map_ commands
     fig.update_layout(
-        mapbox_style="carto-darkmatter",
-        mapbox_zoom=9,
-        mapbox_center={"lat": 25.12, "lon": 55.20},
+        map_style="carto-darkmatter",
+        map_zoom=9,
+        map_center={"lat": 25.12, "lon": 55.20},
         margin={"r":0,"t":0,"l":0,"b":0},
         showlegend=False,
         height=500
     )
     
-    # Removed the deprecated prop entirely here, Plotly handles width automatically
     st.plotly_chart(fig)
     
     render_footer()
