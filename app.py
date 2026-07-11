@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime, timedelta
 import random
+import time
 import plotly.graph_objects as go
 from streamlit_autorefresh import st_autorefresh
 
@@ -33,15 +34,17 @@ def render_footer():
         unsafe_allow_html=True
     )
 
-# --- AUDIO TRIGGER SYSTEM ---
+# --- AUDIO TRIGGER SYSTEM (FIXED WITH TIMESTAMP) ---
 if 'trigger_sound' not in st.session_state:
     st.session_state['trigger_sound'] = None
 
 if st.session_state['trigger_sound'] == "entry":
-    st.markdown("""<audio autoplay><source src="https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3" type="audio/mpeg"></audio>""", unsafe_allow_html=True)
+    # Soft UI 'Pop' for Entry. The ?t= timestamp forces the browser to play it every time.
+    st.markdown(f"""<audio autoplay><source src="https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3?t={time.time()}" type="audio/mpeg"></audio>""", unsafe_allow_html=True)
     st.session_state['trigger_sound'] = None
 elif st.session_state['trigger_sound'] == "exit":
-    st.markdown("""<audio autoplay><source src="https://assets.mixkit.co/active_storage/sfx/1003/1003-preview.mp3" type="audio/mpeg"></audio>""", unsafe_allow_html=True)
+    # Soft UI 'Chime' for Exit.
+    st.markdown(f"""<audio autoplay><source src="https://assets.mixkit.co/active_storage/sfx/2574/2574-preview.mp3?t={time.time()}" type="audio/mpeg"></audio>""", unsafe_allow_html=True)
     st.session_state['trigger_sound'] = None
 
 # --- INITIALIZE SYNTHETIC DATABASE (Session State) ---
@@ -231,7 +234,7 @@ elif page == "Inventory & QR Tracking":
 
     st.markdown("---")
     st.subheader("Warehouse Inventory Database")
-    st.dataframe(st.session_state['inventory'])
+    st.dataframe(st.session_state['inventory'], use_container_width=True)
     
     render_footer()
 
@@ -265,7 +268,7 @@ elif page == "GPS & Fleet Tracking":
         })
     df_fleet = pd.DataFrame(fleet_data)
 
-    st.dataframe(df_fleet[["Truck", "Destination", "speed", "status"]])
+    st.dataframe(df_fleet[["Truck", "Destination", "speed", "status"]], use_container_width=True)
 
     st.markdown("### Active Route Tracing")
     
