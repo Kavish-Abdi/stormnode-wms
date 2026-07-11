@@ -14,7 +14,19 @@ try:
 except:
     st.sidebar.title("⚡")
 
-# --- CUSTOM BRANDING (TIMES NEW ROMAN & BRIGHT) ---
+# --- GLOBAL STYLES & CUSTOM BRANDING ---
+st.markdown("""
+    <style>
+    /* Move Streamlit Notifications (Toasts) to the Top Right */
+    div[data-testid="stToastContainer"] {
+        top: 2rem;
+        right: 2rem;
+        bottom: auto !important;
+        left: auto !important;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
 st.sidebar.markdown(
     "<div style='text-align: center; font-family: \"Times New Roman\", Times, serif; color: #00D2FF; font-size: 26px; font-weight: bold; margin-top: -15px;'>"
     "StormNode Logistics<br>"
@@ -34,7 +46,10 @@ def render_footer():
         unsafe_allow_html=True
     )
 
-# --- INITIALIZE SYNTHETIC DATABASE (Session State) ---
+# --- GLOBAL AUTOREFRESH & SESSION INIT ---
+# This ensures the app reruns every 60 seconds regardless of what page is open
+st_autorefresh(interval=60000, limit=1000, key="global_autorefresh")
+
 if 'trigger_sound' not in st.session_state:
     st.session_state['trigger_sound'] = None
 
@@ -82,59 +97,67 @@ page = st.sidebar.radio("Main Menu", [
     "About StormNode"
 ])
 
+# --- GLOBAL BACKGROUND EVENT SIMULATOR ---
+# This executes unconditionally on every rerun, checking if 60 seconds have passed.
+now = datetime.now()
+if (now - st.session_state['last_auto_update']).total_seconds() >= 58:  # 58 seconds to account for execution drift
+    st.session_state['last_auto_update'] = now
+    locations = ["Whse A - Dock 1", "Whse A - Dock 2", "Whse B - Dock 1", "Whse C - Heavy Freight"]
+    
+    if st.session_state['auto_toggle'] == "entry":
+        auto_truck_id = f"TRK-{random.randint(1000, 9999)}"
+        new_entry = pd.DataFrame([{
+            "Truck_ID": auto_truck_id, 
+            "Entry_Time": now.strftime("%Y-%m-%d %H:%M:%S"), 
+            "Exit_Time": "Pending", 
+            "Warehouse_Location": random.choice(locations),
+            "Status": "At Dock",
+            "Last_Updated": now.strftime("%Y-%m-%d %H:%M:%S")
+        }])
+        st.session_state['truck_logs'] = pd.concat([new_entry, st.session_state['truck_logs']], ignore_index=True)
+        st.session_state['auto_toggle'] = "exit"
+        st.session_state['trigger_sound'] = "entry"
+        
+        # Only show notification toast if NOT on Dockyard page
+        if page != "Dockyard Management":
+            st.toast(f"📡 Fleet Update: {auto_truck_id} has arrived at the dock.", icon="🟢")
+            
+    else:
+        docked = st.session_state['truck_logs'][st.session_state['truck_logs']["Status"] == "At Dock"]
+        if not docked.empty:
+            idx = docked.index[-1]
+            t_id = st.session_state['truck_logs'].at[idx, "Truck_ID"]
+            st.session_state['truck_logs'].at[idx, "Exit_Time"] = now.strftime("%Y-%m-%d %H:%M:%S")
+            st.session_state['truck_logs'].at[idx, "Status"] = "Dispatched"
+            st.session_state['truck_logs'].at[idx, "Last_Updated"] = now.strftime("%Y-%m-%d %H:%M:%S")
+        
+        st.session_state['auto_toggle'] = "entry"
+        st.session_state['trigger_sound'] = "exit"
+        
+        # Only show notification toast if NOT on Dockyard page
+        if page != "Dockyard Management":
+            st.toast(f"📡 Fleet Update: {t_id} was safely dispatched.", icon="🔴")
+
+# --- PROCESS GLOBAL AUDIO (Before page rendering) ---
+audio_tag = ""
+if st.session_state['trigger_sound'] == "entry":
+    audio_tag = f"""<audio autoplay><source src="https://assets.mixkit.co/active_storage/sfx/2573/2573-preview.mp3?t={time.time()}" type="audio/mpeg"></audio>"""
+    st.session_state['trigger_sound'] = None
+elif st.session_state['trigger_sound'] == "exit":
+    audio_tag = f"""<audio autoplay><source src="https://assets.mixkit.co/active_storage/sfx/2574/2574-preview.mp3?t={time.time()}" type="audio/mpeg"></audio>"""
+    st.session_state['trigger_sound'] = None
+
+# Play the sound instantly if we are NOT on the Dockyard page (otherwise it waits to sync with tables)
+if page != "Dockyard Management" and audio_tag:
+    st.markdown(audio_tag, unsafe_allow_html=True)
+
+
 # ==========================================
 # PAGE 1: DOCKYARD MANAGEMENT
 # ==========================================
 if page == "Dockyard Management":
-    count = st_autorefresh(interval=60000, limit=1000, key="dockyard_auto")
-    
     st.title("🚛 Dockyard Management")
     st.markdown("Automated gate sensors and real-time dispatch control.")
-
-    # AUTOMATED LIVE ENTRY/EXIT LOGIC
-    now = datetime.now()
-    if (now - st.session_state['last_auto_update']).total_seconds() >= 60:
-        st.session_state['last_auto_update'] = now
-        locations = ["Whse A - Dock 1", "Whse A - Dock 2", "Whse B - Dock 1", "Whse C - Heavy Freight"]
-        
-        if st.session_state['auto_toggle'] == "entry":
-            auto_truck_id = f"TRK-{random.randint(1000, 9999)}"
-            new_entry = pd.DataFrame([{
-                "Truck_ID": auto_truck_id, 
-                "Entry_Time": now.strftime("%Y-%m-%d %H:%M:%S"), 
-                "Exit_Time": "Pending", 
-                "Warehouse_Location": random.choice(locations),
-                "Status": "At Dock",
-                "Last_Updated": now.strftime("%Y-%m-%d %H:%M:%S")
-            }])
-            st.session_state['truck_logs'] = pd.concat([new_entry, st.session_state['truck_logs']], ignore_index=True)
-            st.toast(f"📡 Sensor Alert: {auto_truck_id} arrived automatically.", icon="🟢")
-            st.session_state['auto_toggle'] = "exit"
-            st.session_state['trigger_sound'] = "entry"
-            st.rerun() 
-            
-        else:
-            docked = st.session_state['truck_logs'][st.session_state['truck_logs']["Status"] == "At Dock"]
-            if not docked.empty:
-                idx = docked.index[-1]
-                t_id = st.session_state['truck_logs'].at[idx, "Truck_ID"]
-                st.session_state['truck_logs'].at[idx, "Exit_Time"] = now.strftime("%Y-%m-%d %H:%M:%S")
-                st.session_state['truck_logs'].at[idx, "Status"] = "Dispatched"
-                st.session_state['truck_logs'].at[idx, "Last_Updated"] = now.strftime("%Y-%m-%d %H:%M:%S")
-                st.toast(f"📡 Sensor Alert: {t_id} dispatched automatically.", icon="🔴")
-            st.session_state['auto_toggle'] = "entry"
-            st.session_state['trigger_sound'] = "exit"
-            st.rerun()
-
-    # Determine exact audio tag and wipe state
-    audio_tag = ""
-    if st.session_state['trigger_sound'] == "entry":
-        # UPDATED: Smooth double-chime, fits well with the exit sound
-        audio_tag = f"""<audio autoplay><source src="https://assets.mixkit.co/active_storage/sfx/2573/2573-preview.mp3?t={time.time()}" type="audio/mpeg"></audio>"""
-        st.session_state['trigger_sound'] = None
-    elif st.session_state['trigger_sound'] == "exit":
-        audio_tag = f"""<audio autoplay><source src="https://assets.mixkit.co/active_storage/sfx/2574/2574-preview.mp3?t={time.time()}" type="audio/mpeg"></audio>"""
-        st.session_state['trigger_sound'] = None
 
     # SPLIT DATA INTO TWO TABLES
     df = st.session_state['truck_logs']
@@ -142,6 +165,7 @@ if page == "Dockyard Management":
     df_dispatched = df[df["Status"] == "Dispatched"]
 
     # --- CUSTOM HTML/CSS FOR DUAL TABLE ANIMATIONS & SYNCED AUDIO ---
+    # The audio_tag is injected here so it renders in the exact millisecond as the table blink
     css_animations = f"""
     {audio_tag}
     <style>
@@ -232,18 +256,6 @@ elif page == "Inventory & QR Tracking":
                     st.success(f"Dispatched {dispatch_qr} on {dispatch_truck}.")
                     st.session_state['trigger_sound'] = "exit"
                     st.rerun()
-
-    # Determine exact audio tag and wipe state for Inventory Page
-    audio_tag = ""
-    if st.session_state['trigger_sound'] == "entry":
-        audio_tag = f"""<audio autoplay><source src="https://assets.mixkit.co/active_storage/sfx/2573/2573-preview.mp3?t={time.time()}" type="audio/mpeg"></audio>"""
-        st.session_state['trigger_sound'] = None
-    elif st.session_state['trigger_sound'] == "exit":
-        audio_tag = f"""<audio autoplay><source src="https://assets.mixkit.co/active_storage/sfx/2574/2574-preview.mp3?t={time.time()}" type="audio/mpeg"></audio>"""
-        st.session_state['trigger_sound'] = None
-
-    if audio_tag:
-        st.markdown(audio_tag, unsafe_allow_html=True)
 
     st.markdown("---")
     st.subheader("Warehouse Inventory Database")
