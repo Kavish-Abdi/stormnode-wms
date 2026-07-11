@@ -1,2 +1,4 @@
-plotly
-streamlit-autorefresh
+streamlit==1.36.0
+pandas==2.1.4
+plotly==5.24.1
+streamlit-autorefresh==1.0.1
