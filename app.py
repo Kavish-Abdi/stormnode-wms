@@ -34,19 +34,10 @@ def render_footer():
         unsafe_allow_html=True
     )
 
-# --- AUDIO TRIGGER SYSTEM (SYNCED TO TABLES) ---
-audio_html = ""
+# --- INITIALIZE SYNTHETIC DATABASE (Session State) ---
 if 'trigger_sound' not in st.session_state:
     st.session_state['trigger_sound'] = None
 
-if st.session_state['trigger_sound'] == "entry":
-    audio_html = f"""<audio autoplay><source src="https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3?t={time.time()}" type="audio/mpeg"></audio>"""
-    st.session_state['trigger_sound'] = None
-elif st.session_state['trigger_sound'] == "exit":
-    audio_html = f"""<audio autoplay><source src="https://assets.mixkit.co/active_storage/sfx/2574/2574-preview.mp3?t={time.time()}" type="audio/mpeg"></audio>"""
-    st.session_state['trigger_sound'] = None
-
-# --- INITIALIZE SYNTHETIC DATABASE (Session State) ---
 if 'truck_logs' not in st.session_state:
     synthetic_trucks = []
     locations = ["Whse A - Dock 1", "Whse A - Dock 2", "Whse B - Dock 1", "Whse C - Heavy Freight", "Whse C - Cold Chain"]
@@ -135,29 +126,40 @@ if page == "Dockyard Management":
             st.session_state['trigger_sound'] = "exit"
             st.rerun()
 
+    # Determine exact audio tag and wipe state
+    audio_tag = ""
+    if st.session_state['trigger_sound'] == "entry":
+        audio_tag = f"""<audio autoplay><source src="https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3?t={time.time()}" type="audio/mpeg"></audio>"""
+        st.session_state['trigger_sound'] = None
+    elif st.session_state['trigger_sound'] == "exit":
+        audio_tag = f"""<audio autoplay><source src="https://assets.mixkit.co/active_storage/sfx/2574/2574-preview.mp3?t={time.time()}" type="audio/mpeg"></audio>"""
+        st.session_state['trigger_sound'] = None
+
     # SPLIT DATA INTO TWO TABLES
     df = st.session_state['truck_logs']
     df_docked = df[df["Status"] == "At Dock"]
     df_dispatched = df[df["Status"] == "Dispatched"]
 
-    # --- CUSTOM HTML/CSS FOR DUAL TABLE ANIMATIONS ---
-    css_animations = """
+    # --- CUSTOM HTML/CSS FOR DUAL TABLE ANIMATIONS & SYNCED AUDIO ---
+    # The audio_tag is injected directly into the CSS payload so they render in the exact same millisecond
+    css_animations = f"""
+    {audio_tag}
     <style>
-    @keyframes blink-animation-cyan {
-        0% { background-color: #00D2FF; color: #000000; }
-        50% { background-color: transparent; color: #C5C6C7; }
-        100% { background-color: #00D2FF; color: #000000; }
-    }
-    @keyframes blink-animation-green {
-        0% { background-color: #00FF55; color: #000000; }
-        50% { background-color: transparent; color: #C5C6C7; }
-        100% { background-color: #00FF55; color: #000000; }
-    }
-    .blinking-row-cyan { animation: blink-animation-cyan 1s linear 10; }
-    .blinking-row-green { animation: blink-animation-green 1s linear 10; }
-    .custom-table { width: 100%; text-align: left; border-collapse: collapse; color: #C5C6C7; font-size: 14px; margin-bottom: 20px;}
-    .custom-table th, .custom-table td { padding: 10px; border-bottom: 1px solid #1F2833; }
-    .custom-table th { color: #ffffff; font-weight: bold; background-color: #1A2235; }
+    @keyframes blink-animation-cyan {{
+        0% {{ background-color: #00D2FF; color: #000000; }}
+        50% {{ background-color: transparent; color: #C5C6C7; }}
+        100% {{ background-color: #00D2FF; color: #000000; }}
+    }}
+    @keyframes blink-animation-green {{
+        0% {{ background-color: #00FF55; color: #000000; }}
+        50% {{ background-color: transparent; color: #C5C6C7; }}
+        100% {{ background-color: #00FF55; color: #000000; }}
+    }}
+    .blinking-row-cyan {{ animation: blink-animation-cyan 1s linear 10; }}
+    .blinking-row-green {{ animation: blink-animation-green 1s linear 10; }}
+    .custom-table {{ width: 100%; text-align: left; border-collapse: collapse; color: #C5C6C7; font-size: 14px; margin-bottom: 20px;}}
+    .custom-table th, .custom-table td {{ padding: 10px; border-bottom: 1px solid #1F2833; }}
+    .custom-table th {{ color: #ffffff; font-weight: bold; background-color: #1A2235; }}
     </style>
     """
     
@@ -182,10 +184,6 @@ if page == "Dockyard Management":
         html_dispatched += f"<tr class='{row_class}'><td>{row['Truck_ID']}</td><td>{row['Entry_Time']}</td><td>{row['Exit_Time']}</td><td>{row['Warehouse_Location']}</td><td>{row['Status']}</td></tr>"
     html_dispatched += "</tbody></table>"
     st.markdown(html_dispatched, unsafe_allow_html=True)
-
-    # Inject the audio precisely alongside the tables to force absolute synchronization
-    if audio_html:
-        st.markdown(audio_html, unsafe_allow_html=True)
 
     render_footer()
 
@@ -235,14 +233,22 @@ elif page == "Inventory & QR Tracking":
                     st.session_state['trigger_sound'] = "exit"
                     st.rerun()
 
+    # Determine exact audio tag and wipe state for Inventory Page
+    audio_tag = ""
+    if st.session_state['trigger_sound'] == "entry":
+        audio_tag = f"""<audio autoplay><source src="https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.mp3?t={time.time()}" type="audio/mpeg"></audio>"""
+        st.session_state['trigger_sound'] = None
+    elif st.session_state['trigger_sound'] == "exit":
+        audio_tag = f"""<audio autoplay><source src="https://assets.mixkit.co/active_storage/sfx/2574/2574-preview.mp3?t={time.time()}" type="audio/mpeg"></audio>"""
+        st.session_state['trigger_sound'] = None
+
+    if audio_tag:
+        st.markdown(audio_tag, unsafe_allow_html=True)
+
     st.markdown("---")
     st.subheader("Warehouse Inventory Database")
     st.dataframe(st.session_state['inventory'], use_container_width=True)
     
-    # Inject the audio precisely alongside the tables to force absolute synchronization
-    if audio_html:
-        st.markdown(audio_html, unsafe_allow_html=True)
-        
     render_footer()
 
 # ==========================================
@@ -279,7 +285,6 @@ elif page == "GPS & Fleet Tracking":
 
     st.markdown("### Active Route Tracing")
     
-    # STABLE PLOTLY MAP REPLACEMENT
     fig = go.Figure()
     
     for d in fleet_data:
