@@ -51,6 +51,16 @@ st_autorefresh(interval=60000, limit=1000, key="global_autorefresh")
 if 'trigger_sound' not in st.session_state:
     st.session_state['trigger_sound'] = None
 
+# Fleet Progress State (Allows trucks to move smoothly forward)
+if 'fleet_state' not in st.session_state:
+    st.session_state['fleet_state'] = [
+        {"id": "TRK-901", "dest": "DXB Airport", "d_lat": 25.2532, "d_lon": 55.3657, "progress": 0.15},
+        {"id": "TRK-902", "dest": "Dubai Mall", "d_lat": 25.1972, "d_lon": 55.2744, "progress": 0.40},
+        {"id": "TRK-903", "dest": "Dubai Marina", "d_lat": 25.0805, "d_lon": 55.1403, "progress": 0.65},
+        {"id": "TRK-904", "dest": "Al Maktoum Int", "d_lat": 24.8966, "d_lon": 55.1605, "progress": 0.20},
+        {"id": "TRK-905", "dest": "Sharjah Ind", "d_lat": 25.3134, "d_lon": 55.4055, "progress": 0.80}
+    ]
+
 if 'truck_logs' not in st.session_state:
     synthetic_trucks = []
     locations = ["Whse A - Dock 1", "Whse A - Dock 2", "Whse B - Dock 1", "Whse C - Heavy Freight", "Whse C - Cold Chain"]
@@ -99,8 +109,15 @@ page = st.sidebar.radio("Main Menu", [
 now = datetime.now()
 if (now - st.session_state['last_auto_update']).total_seconds() >= 58:  
     st.session_state['last_auto_update'] = now
-    locations = ["Whse A - Dock 1", "Whse A - Dock 2", "Whse B - Dock 1", "Whse C - Heavy Freight"]
     
+    # Progress the active fleet along their routes
+    for t in st.session_state['fleet_state']:
+        t['progress'] += random.uniform(0.02, 0.08)
+        if t['progress'] >= 1.0:
+            t['progress'] = 0.05  # Loop back for presentation continuity
+            
+    # Dockyard Automation
+    locations = ["Whse A - Dock 1", "Whse A - Dock 2", "Whse B - Dock 1", "Whse C - Heavy Freight"]
     if st.session_state['auto_toggle'] == "entry":
         auto_truck_id = f"TRK-{random.randint(1000, 9999)}"
         new_entry = pd.DataFrame([{
@@ -250,8 +267,6 @@ elif page == "Inventory & QR Tracking":
 
     st.markdown("---")
     st.subheader("Warehouse Inventory Database")
-    
-    # THE FIX: Removed all width parameters completely
     st.dataframe(st.session_state['inventory'])
     
     render_footer()
@@ -264,64 +279,90 @@ elif page == "GPS & Fleet Tracking":
     st.markdown("Real-time telemetry and dynamic routing for active fleets.")
 
     hub_lat, hub_lon = 24.9857, 55.0273
-    destinations = [
-        {"id": "TRK-901", "dest": "DXB Airport", "d_lat": 25.2532, "d_lon": 55.3657},
-        {"id": "TRK-902", "dest": "Dubai Mall", "d_lat": 25.1972, "d_lon": 55.2744},
-        {"id": "TRK-903", "dest": "Dubai Marina", "d_lat": 25.0805, "d_lon": 55.1403},
-        {"id": "TRK-904", "dest": "Al Maktoum Int", "d_lat": 24.8966, "d_lon": 55.1605},
-        {"id": "TRK-905", "dest": "Sharjah Ind", "d_lat": 25.3134, "d_lon": 55.4055}
-    ]
     
+    # Generate live telemetry data from session state
     fleet_data = []
-    for d in destinations:
-        progress = float(random.uniform(0.1, 0.9))
-        c_lat = float(hub_lat + (d["d_lat"] - hub_lat) * progress)
-        c_lon = float(hub_lon + (d["d_lon"] - hub_lon) * progress)
+    for d in st.session_state['fleet_state']:
+        c_lat = float(hub_lat + (d["d_lat"] - hub_lat) * d["progress"])
+        c_lon = float(hub_lon + (d["d_lon"] - hub_lon) * d["progress"])
         fleet_data.append({
             "Truck": d["id"], "Destination": d["dest"],
             "start_lat": hub_lat, "start_lon": hub_lon,
             "curr_lat": c_lat, "curr_lon": c_lon,
             "dest_lat": d["d_lat"], "dest_lon": d["d_lon"],
-            "speed": random.randint(45, 90), "status": random.choice(["🟢 Clear", "🟡 Moderate"])
+            "speed": random.randint(45, 90), 
+            "status": "🟢 Arriving" if d["progress"] > 0.9 else random.choice(["🟢 Clear", "🟡 Moderate"])
         })
     df_fleet = pd.DataFrame(fleet_data)
 
-    # THE FIX: Removed all width parameters completely
-    st.dataframe(df_fleet[["Truck", "Destination", "speed", "status"]])
+    # Interactive Focus Mode
+    col1, col2 = st.columns([1, 2.5])
+    
+    with col1:
+        st.markdown("### Active Missions")
+        # Dropdown to isolate specific trucks
+        selected_truck = st.selectbox("🎯 Target ID Focus:", ["All Active Fleet"] + df_fleet["Truck"].tolist())
+        st.dataframe(df_fleet[["Truck", "Destination", "speed", "status"]])
 
-    st.markdown("### Active Route Tracing")
-    
-    fig = go.Figure()
-    
-    for d in fleet_data:
-        fig.add_trace(go.Scattermap(
-            mode="lines",
-            lon=[d['start_lon'], d['curr_lon'], d['dest_lon']],
-            lat=[d['start_lat'], d['curr_lat'], d['dest_lat']],
-            line=dict(width=2, color='rgba(255, 255, 255, 0.3)'),
-            hoverinfo='none'
-        ))
-        fig.add_trace(go.Scattermap(
-            mode="markers",
-            lon=[d['curr_lon']],
-            lat=[d['curr_lat']],
-            marker=dict(size=14, color='#00D2FF'),
-            name=d['Truck'],
-            text=f"{d['Truck']} heading to {d['Destination']}",
-            hoverinfo='text'
-        ))
+    with col2:
+        st.markdown("### Satellite Telemetry")
+        fig = go.Figure()
+        
+        # Filter map logic based on the dropdown selection
+        if selected_truck == "All Active Fleet":
+            plot_data = fleet_data
+            map_zoom = 9
+            map_center = {"lat": 25.12, "lon": 55.20}
+        else:
+            plot_data = [d for d in fleet_data if d["Truck"] == selected_truck]
+            map_zoom = 11.5
+            map_center = {"lat": plot_data[0]["curr_lat"], "lon": plot_data[0]["curr_lon"]}
+        
+        for d in plot_data:
+            # High-Visibility Route Line
+            fig.add_trace(go.Scattermap(
+                mode="lines",
+                lon=[d['start_lon'], d['curr_lon'], d['dest_lon']],
+                lat=[d['start_lat'], d['curr_lat'], d['dest_lat']],
+                line=dict(width=3, color='#00D2FF' if selected_truck != "All Active Fleet" else 'rgba(255, 255, 255, 0.3)'),
+                hoverinfo='none'
+            ))
+            
+            # Origin & Destination Markers (Only show in Focus Mode to avoid clutter)
+            if selected_truck != "All Active Fleet":
+                fig.add_trace(go.Scattermap(
+                    mode="markers",
+                    lon=[d['start_lon']], lat=[d['start_lat']],
+                    marker=dict(size=12, color='white'),
+                    name="Origin", text="StormNode Hub Bay", hoverinfo='text'
+                ))
+                fig.add_trace(go.Scattermap(
+                    mode="markers",
+                    lon=[d['dest_lon']], lat=[d['dest_lat']],
+                    marker=dict(size=12, color='#00FF55'),
+                    name="Destination", text=f"Target: {d['Destination']}", hoverinfo='text'
+                ))
 
-    fig.update_layout(
-        map_style="carto-darkmatter",
-        map_zoom=9,
-        map_center={"lat": 25.12, "lon": 55.20},
-        margin={"r":0,"t":0,"l":0,"b":0},
-        showlegend=False,
-        height=500
-    )
-    
-    # THE FIX: Removed all width parameters completely
-    st.plotly_chart(fig)
+            # Moving Truck Marker
+            fig.add_trace(go.Scattermap(
+                mode="markers",
+                lon=[d['curr_lon']],
+                lat=[d['curr_lat']],
+                marker=dict(size=16, color='#00D2FF'),
+                name=d['Truck'],
+                text=f"<b>{d['Truck']}</b><br>Speed: {d['speed']} km/h<br>Heading to: {d['Destination']}",
+                hoverinfo='text'
+            ))
+
+        fig.update_layout(
+            map_style="carto-darkmatter",
+            map_zoom=map_zoom,
+            map_center=map_center,
+            margin={"r":0,"t":0,"l":0,"b":0},
+            showlegend=False,
+            height=500
+        )
+        st.plotly_chart(fig)
     
     render_footer()
 
@@ -330,11 +371,18 @@ elif page == "GPS & Fleet Tracking":
 # ==========================================
 elif page == "About StormNode":
     st.title("⚡ About StormNode Logistics")
+    st.image("https://images.unsplash.com/photo-1586528116311-ad8ed74512fc?q=80&w=2000&auto=format&fit=crop", caption="StormNode Next-Generation Fulfillment Hub")
+    
     st.markdown("### Powering the Connected Supply Chain")
     st.markdown("""
-    **StormNode Logistics** is a next-generation freight and warehousing startup designed to bridge the gap between heavy physical freight and cutting-edge digital infrastructure. 
+    **StormNode Logistics** is a next-generation freight and warehousing platform designed to bridge the gap between heavy physical freight and cutting-edge digital infrastructure. 
     
-    Founded in 2026, our mission is to eliminate supply chain opacity. Traditional logistics rely on manual data entry and fragmented tracking systems. At StormNode, we treat every warehouse, truck, and cargo batch as a "node" in a highly connected, automated neural network.
+    Founded in 2026, our mission is to completely eliminate supply chain opacity. Traditional logistics rely on manual data entry, fractured communication, and fragmented tracking systems. At StormNode, we treat every warehouse, dispatch truck, and cargo batch as a vital "node" in a highly connected, automated neural network.
+
+    **Core Architecture Modules:**
+    * **Automated Dockyard Management:** Real-time sensor integration automates entry, dispatch logs, and staging bay allocations, effectively eliminating gatehouse bottlenecks and manual processing delays.
+    * **Inventory & QR Tracing:** High-fidelity, granular tracing ties exact physical bin locations to active transport routes, ensuring 100% chain-of-custody compliance from receipt to delivery.
+    * **Neural Routing & Telemetry:** GPS fleet monitoring tracks transit progression dynamically over active satellite overlays, adjusting arrival ETAs for predictive warehouse receiving and optimized fuel routing.
     """)
     render_footer()
 
