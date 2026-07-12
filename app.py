@@ -267,15 +267,12 @@ elif page == "Inventory & QR Tracking":
     with col2:
         st.subheader("Dispatch Batch")
         in_stock = st.session_state['inventory'][st.session_state['inventory']["Status"] == "In Warehouse"]["Batch_QR"].tolist()
-        
-        # 1. Fetch available docked trucks actively from the Dockyard data
         docked_df = st.session_state['truck_logs'][st.session_state['truck_logs']["Status"] == "At Dock"]
         available_trucks = docked_df["Truck_ID"].tolist()
         
         if in_stock:
             dispatch_qr = st.selectbox("Select Batch QR", ["Select"] + in_stock)
             
-            # Show the user which trucks are actually available to pick from
             if available_trucks:
                 st.info(f"🚚 Trucks Available at Dock: **{', '.join(available_trucks)}**")
             else:
@@ -285,25 +282,20 @@ elif page == "Inventory & QR Tracking":
             
             if st.button("Dispatch"):
                 if dispatch_qr != "Select" and dispatch_truck:
-                    # 2. Hard validation: Check if the typed ID is actually at the dock
                     if dispatch_truck not in available_trucks:
                         st.error(f"❌ Invalid Truck ID: '{dispatch_truck}' is not currently at the dock.")
                     else:
-                        # Update Inventory Database
                         idx = st.session_state['inventory'].index[st.session_state['inventory']['Batch_QR'] == dispatch_qr].tolist()[0]
                         st.session_state['inventory'].at[idx, "Time_Dispatched"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                         st.session_state['inventory'].at[idx, "Dispatched_On_Truck"] = dispatch_truck
                         st.session_state['inventory'].at[idx, "Status"] = "In Transit"
                         
-                        # 3. Cross-Module Update: Dispatch the Truck in Dockyard Management System
                         t_idx = st.session_state['truck_logs'].index[st.session_state['truck_logs']['Truck_ID'] == dispatch_truck].tolist()[0]
                         st.session_state['truck_logs'].at[t_idx, "Exit_Time"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                         st.session_state['truck_logs'].at[t_idx, "Status"] = "Dispatched"
                         st.session_state['truck_logs'].at[t_idx, "Last_Updated"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                         
                         st.success(f"✅ Order Dispatched! {dispatch_qr} loaded onto {dispatch_truck}.")
-                        
-                        # Trigger system-wide notification and exit sound
                         st.session_state['trigger_sound'] = "exit"
                         st.rerun()
 
@@ -358,21 +350,23 @@ elif page == "GPS & Fleet Tracking":
         col2.metric("Traffic Route", live_data['Traffic Condition'])
         col3.metric("Live ETA", live_data['ETA'])
         col4.metric("Destination", live_data['Destination'])
+        
+        plot_data = [d for d in fleet_data if d["Truck"] == selected_truck]
+        # Always provide the center/zoom so the map never panics and goes to the world view
+        map_zoom = 11.5
+        map_center = {"lat": plot_data[0]["curr_lat"], "lon": plot_data[0]["curr_lon"]}
     else:
         st.subheader("📡 Satellite Telemetry: All Active Fleet")
+        plot_data = fleet_data
+        # Always provide the center/zoom so the map never panics and goes to the world view
+        map_zoom = 9
+        map_center = {"lat": 25.12, "lon": 55.20}
     
-    map_layout = dict(style="carto-darkmatter")
-    if 'last_truck' not in st.session_state or st.session_state['last_truck'] != selected_truck:
-        st.session_state['last_truck'] = selected_truck
-        if selected_truck == "All Active Fleet":
-            map_layout['zoom'] = 9
-            map_layout['center'] = {"lat": 25.12, "lon": 55.20}
-        else:
-            plot_data_first = [d for d in fleet_data if d["Truck"] == selected_truck][0]
-            map_layout['zoom'] = 11.5
-            map_layout['center'] = {"lat": plot_data_first["curr_lat"], "lon": plot_data_first["curr_lon"]}
-
-    plot_data = fleet_data if selected_truck == "All Active Fleet" else [d for d in fleet_data if d["Truck"] == selected_truck]
+    map_layout = dict(
+        style="carto-darkmatter",
+        zoom=map_zoom,
+        center=map_center
+    )
     
     fig = go.Figure()
     
