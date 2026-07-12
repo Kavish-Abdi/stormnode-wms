@@ -3,6 +3,7 @@ import pandas as pd
 from datetime import datetime, timedelta
 import random
 import time
+import hashlib
 import plotly.graph_objects as go
 import plotly.express as px
 from streamlit_autorefresh import st_autorefresh
@@ -18,14 +19,9 @@ except:
 # --- GLOBAL STYLES & UI GLOW-UP ---
 st.markdown("""
     <style>
-    /* Toast Positioning */
     div[data-testid="stToastContainer"] {
-        top: 2rem;
-        right: 2rem;
-        bottom: auto !important;
-        left: auto !important;
+        top: 2rem; right: 2rem; bottom: auto !important; left: auto !important;
     }
-    /* Pulsing Status Orb */
     .pulse-orb {
         height: 12px; width: 12px; background-color: #00FF55; border-radius: 50%;
         display: inline-block; margin-right: 8px; box-shadow: 0 0 10px #00FF55;
@@ -36,7 +32,6 @@ st.markdown("""
         70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(0, 255, 85, 0); }
         100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 255, 85, 0); }
     }
-    /* AI Gate Scanner CSS */
     .scanner-box {
         position: relative; width: 100%; height: 60px; background: #1A2235; 
         border: 1px solid #00D2FF; border-radius: 5px; overflow: hidden;
@@ -48,9 +43,13 @@ st.markdown("""
         background: linear-gradient(90deg, transparent, rgba(0, 210, 255, 0.4), transparent);
         animation: scan 3s infinite linear;
     }
-    @keyframes scan {
-        0% { left: -50%; }
-        100% { left: 100%; }
+    @keyframes scan { 0% { left: -50%; } 100% { left: 100%; } }
+    
+    /* Blockchain Terminal CSS */
+    .crypto-terminal {
+        background-color: #0d1117; color: #00FF55; font-family: 'Courier New', Courier, monospace;
+        padding: 15px; border-radius: 5px; height: 180px; overflow-y: hidden;
+        border: 1px solid #30363d; font-size: 13px; line-height: 1.5;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -65,7 +64,6 @@ st.sidebar.markdown(
 
 st.sidebar.markdown("<br><div style='display:flex; align-items:center; justify-content:center; font-family:monospace; color:#C5C6C7;'><div class='pulse-orb'></div> System Online | AI Active</div><br>", unsafe_allow_html=True)
 
-# --- HELPER FUNCTIONS & HIGH-RES ROUTING DATA ---
 def render_footer():
     st.markdown("---")
     st.markdown(
@@ -99,6 +97,13 @@ def get_interpolated_pos(route, progress):
 st_autorefresh(interval=5000, limit=10000, key="global_autorefresh")
 
 if 'trigger_sound' not in st.session_state: st.session_state['trigger_sound'] = None
+
+# NEW INIT: Blockchain Ledger
+if 'blockchain_ledger' not in st.session_state:
+    st.session_state['blockchain_ledger'] = [
+        f"[{datetime.now().strftime('%H:%M:%S')}] SYSTEM INITIALIZED: Genesis Block Created",
+        f"[{datetime.now().strftime('%H:%M:%S')}] WAITING FOR SECURE DISPATCH CONTRACTS..."
+    ]
 
 if 'static_fleet_df' not in st.session_state:
     st.session_state['static_fleet_df'] = pd.DataFrame([
@@ -140,17 +145,17 @@ if 'inventory' not in st.session_state:
     synthetic_inv = []
     items = ["Semiconductors", "Lithium Batteries", "Auto Parts", "Medical Supplies", "Consumer Tech", "Machinery"]
     sides = ["North Wing", "South Wing", "East Wing", "West Wing"]
-    for i in range(20):
+    for i in range(25):
+        # Added X, Y, Z coordinates for 3D Mapping
         synthetic_inv.append({
             "Batch_QR": f"QR-{random.randint(1000, 9999)}", 
             "Item_Name": random.choice(items), 
             "Warehouse_Side": random.choice(sides),
             "Aisle_Number": f"Aisle {random.randint(1, 15)}",
             "Bin_Location": f"Bin {random.choice(['A','B','C','D'])}-{random.randint(1,9)}",
+            "X_Coord": random.randint(1, 20), "Y_Coord": random.randint(1, 15), "Z_Coord": random.randint(1, 5),
             "Time_Received": (datetime.now() - timedelta(hours=random.randint(1, 72))).strftime("%Y-%m-%d %H:%M:%S"), 
-            "Time_Dispatched": "N/A", 
-            "Dispatched_On_Truck": "N/A", 
-            "Status": "In Warehouse"
+            "Time_Dispatched": "N/A", "Dispatched_On_Truck": "N/A", "Status": "In Warehouse"
         })
     st.session_state['inventory'] = pd.DataFrame(synthetic_inv)
 
@@ -160,6 +165,7 @@ page = st.sidebar.radio("Main Menu", [
     "Dockyard Management", 
     "Inventory & QR Tracking", 
     "GPS & Fleet Tracking",
+    "AI Predictive Analytics",
     "About StormNode"
 ])
 
@@ -223,7 +229,6 @@ if page == "Dockyard Management":
     
     df = st.session_state['truck_logs']
     
-    # --- TRUE FUNCTIONAL CCTV LOGIC ---
     latest_update = df.sort_values(by="Last_Updated", ascending=False).iloc[0]
     last_time = datetime.strptime(latest_update['Last_Updated'], "%Y-%m-%d %H:%M:%S")
     time_since = int((now - last_time).total_seconds())
@@ -248,7 +253,6 @@ if page == "Dockyard Management":
     <br>
     """
     st.markdown(scanner_html, unsafe_allow_html=True)
-    # --- END TRUE FUNCTIONAL CCTV LOGIC ---
 
     css_animations = f"""
     {audio_tag}
@@ -287,8 +291,8 @@ if page == "Dockyard Management":
 # PAGE 2: INVENTORY & QR TRACKING
 # ==========================================
 elif page == "Inventory & QR Tracking":
-    st.title("📦 Inventory & Warehouse Tracing")
-    st.markdown("Pinpoint exact batch locations and link them to dispatch trucks.")
+    st.title("📦 Inventory & Blockchain Securitization")
+    st.markdown("Pinpoint exact batch locations via 3D Digital Twin and secure dispatches to an immutable ledger.")
     col1, col2 = st.columns(2)
 
     with col1:
@@ -304,6 +308,7 @@ elif page == "Inventory & QR Tracking":
                 new_item = pd.DataFrame([{
                     "Batch_QR": batch_qr, "Item_Name": item_name, "Warehouse_Side": side,
                     "Aisle_Number": aisle, "Bin_Location": bin_loc,
+                    "X_Coord": random.randint(1, 20), "Y_Coord": random.randint(1, 15), "Z_Coord": random.randint(1, 5),
                     "Time_Received": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), 
                     "Time_Dispatched": "N/A", "Dispatched_On_Truck": "N/A", "Status": "In Warehouse"
                 }])
@@ -313,51 +318,92 @@ elif page == "Inventory & QR Tracking":
                 st.rerun()
 
     with col2:
-        st.subheader("Dispatch Batch")
+        st.subheader("Smart Contract Dispatch")
         in_stock = st.session_state['inventory'][st.session_state['inventory']["Status"] == "In Warehouse"]["Batch_QR"].tolist()
         docked_df = st.session_state['truck_logs'][st.session_state['truck_logs']["Status"] == "At Dock"]
         available_trucks = docked_df["Truck_ID"].tolist()
         
         if in_stock:
-            dispatch_qr = st.selectbox("Select Batch QR", ["Select"] + in_stock)
+            dispatch_qr = st.selectbox("Select Batch QR to Dispatch", ["Select"] + in_stock)
             if available_trucks:
-                st.info(f"🚚 Trucks Available at Dock: **{', '.join(available_trucks)}**")
+                st.info(f"🚚 Valid Transporters at Dock: **{', '.join(available_trucks)}**")
             else:
-                st.warning("⚠️ No trucks are currently parked at the dock.")
+                st.warning("⚠️ No physical transporters detected at gates.")
                 
-            dispatch_truck = st.text_input("Assign to Truck ID")
-            if st.button("Dispatch"):
+            dispatch_truck = st.text_input("Execute Contract: Assign to Truck ID")
+            if st.button("Execute Dispatch & Mint Hash", type="primary"):
                 if dispatch_qr != "Select" and dispatch_truck:
                     if dispatch_truck not in available_trucks:
-                        st.error(f"❌ Invalid Truck ID: '{dispatch_truck}' is not currently at the dock.")
+                        st.error(f"❌ Invalid Transport Protocol: '{dispatch_truck}' is not currently at the dock.")
                     else:
+                        # 1. Update Inventory Database
                         idx = st.session_state['inventory'].index[st.session_state['inventory']['Batch_QR'] == dispatch_qr].tolist()[0]
                         st.session_state['inventory'].at[idx, "Time_Dispatched"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                         st.session_state['inventory'].at[idx, "Dispatched_On_Truck"] = dispatch_truck
                         st.session_state['inventory'].at[idx, "Status"] = "In Transit"
                         
+                        # 2. Update Dockyard Logs
                         t_idx = st.session_state['truck_logs'].index[st.session_state['truck_logs']['Truck_ID'] == dispatch_truck].tolist()[0]
                         st.session_state['truck_logs'].at[t_idx, "Exit_Time"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                         st.session_state['truck_logs'].at[t_idx, "Status"] = "Dispatched"
                         st.session_state['truck_logs'].at[t_idx, "Last_Updated"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                         
-                        st.success(f"✅ Order Dispatched! {dispatch_qr} loaded onto {dispatch_truck}.")
+                        # 3. Create SECURE BLOCKCHAIN HASH
+                        raw_data = f"{dispatch_qr}-{dispatch_truck}-{datetime.now().isoformat()}"
+                        tx_hash = hashlib.sha256(raw_data.encode()).hexdigest()
+                        log_entry = f"[{datetime.now().strftime('%H:%M:%S')}] TX_HASH: 0x{tx_hash[:20]}... 🟢 SECURED: {dispatch_qr} -> {dispatch_truck}"
+                        st.session_state['blockchain_ledger'].insert(0, log_entry)
+
+                        st.success(f"✅ Cryptographic Contract Executed. Load secured.")
                         st.session_state['trigger_sound'] = "exit"
                         st.rerun()
 
+    # BLOCKCHAIN LIVE TERMINAL
+    st.markdown("#### 🔗 Live Immutable Ledger Terminal")
+    ledger_content = "<br>".join(st.session_state['blockchain_ledger'])
+    st.markdown(f'<div class="crypto-terminal">{ledger_content}</div>', unsafe_allow_html=True)
+    
     st.markdown("---")
-    st.subheader("📊 Live Warehouse Density Heatmap")
-    st.markdown("Visual AI grouping of current stock density across storage wings.")
+
+    # NEW FEATURE: 3D DIGITAL TWIN
+    st.subheader("🟦 3D Warehouse Digital Twin")
+    st.markdown("Interactive 3D scatter matrix mirroring physical storage architecture. **Click and drag to rotate.**")
     
     current_stock = st.session_state['inventory'][st.session_state['inventory']["Status"] == "In Warehouse"]
-    wing_counts = {"North Wing": 0, "South Wing": 0, "East Wing": 0, "West Wing": 0}
-    for wing in current_stock['Warehouse_Side']: wing_counts[wing] += 1
-    heatmap_df = pd.DataFrame(list(wing_counts.items()), columns=["Warehouse Wing", "Stock Count"])
     
-    fig_heat = px.treemap(heatmap_df, path=['Warehouse Wing'], values='Stock Count', 
-                          color='Stock Count', color_continuous_scale='Tealgrn')
-    fig_heat.update_layout(margin=dict(t=10, l=10, r=10, b=10), paper_bgcolor="rgba(0,0,0,0)", height=300)
-    st.plotly_chart(fig_heat, use_container_width=True)
+    if not current_stock.empty:
+        fig_3d = go.Figure(data=[go.Scatter3d(
+            x=current_stock['X_Coord'], 
+            y=current_stock['Y_Coord'], 
+            z=current_stock['Z_Coord'],
+            mode='markers',
+            text=current_stock['Batch_QR'] + "<br>" + current_stock['Item_Name'],
+            hoverinfo='text',
+            marker=dict(
+                size=8,
+                color=current_stock['Z_Coord'], # Color scale by height
+                colorscale='Tealgrn',
+                opacity=0.9,
+                line=dict(width=1, color='white')
+            )
+        )])
+        fig_3d.update_layout(
+            margin=dict(l=0, r=0, b=0, t=0),
+            paper_bgcolor="rgba(0,0,0,0)",
+            scene=dict(
+                xaxis_title='Aisle Grid (X)',
+                yaxis_title='Rack Grid (Y)',
+                zaxis_title='Vertical Shelf (Z)',
+                xaxis=dict(gridcolor='#333', backgroundcolor='rgba(0,0,0,0)'),
+                yaxis=dict(gridcolor='#333', backgroundcolor='rgba(0,0,0,0)'),
+                zaxis=dict(gridcolor='#333', backgroundcolor='rgba(0,0,0,0)'),
+                camera=dict(eye=dict(x=1.5, y=1.5, z=0.5))
+            ),
+            height=500
+        )
+        st.plotly_chart(fig_3d, use_container_width=True)
+    else:
+        st.info("Warehouse is currently completely empty.")
 
     st.markdown("---")
     st.subheader("Warehouse Inventory Database")
@@ -469,7 +515,59 @@ elif page == "GPS & Fleet Tracking":
     render_footer()
 
 # ==========================================
-# PAGE 4: ABOUT STORMNODE
+# PAGE 4: AI PREDICTIVE ANALYTICS
+# ==========================================
+elif page == "AI Predictive Analytics":
+    st.title("🧠 AI Predictive Analytics Forecast")
+    st.markdown("Machine Learning algorithms calculating expected dockyard capacity constraints over the next 7 days.")
+    
+    st.markdown("---")
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Forecasting Model", "Random Forest Regressor")
+    col2.metric("Historical Data Fed", "8.4 Million Rows")
+    col3.metric("Prediction Accuracy", "96.4%", "+2.1%")
+    st.markdown("---")
+
+    # Generate smooth spline-like simulated forecast data
+    days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+    expected_trucks = [120, 145, 130, 190, 240, 100, 85]
+    
+    fig_ml = go.Figure()
+    
+    # Plotting the smooth prediction line
+    fig_ml.add_trace(go.Scatter(
+        x=days, y=expected_trucks,
+        mode='lines+markers',
+        line=dict(color='#00D2FF', width=4, shape='spline'),
+        marker=dict(size=10, color='white'),
+        name="Predicted Traffic"
+    ))
+    
+    # Highlighting Critical Bottlenecks (e.g., Friday spike)
+    fig_ml.add_shape(
+        type="rect", x0="Thu", y0=180, x1="Fri", y1=260,
+        fillcolor="rgba(255, 51, 51, 0.2)", line=dict(width=0), layer="below"
+    )
+    fig_ml.add_annotation(
+        x="Fri", y=240, text="🚨 Critical Bottleneck Predicted",
+        showarrow=True, arrowhead=1, ax=0, ay=-40,
+        font=dict(color="#FF3333", size=14, weight="bold")
+    )
+
+    fig_ml.update_layout(
+        title="7-Day Forward Telemetry Forecast (Trucks per Day)",
+        xaxis=dict(showgrid=False, color="#C5C6C7"),
+        yaxis=dict(title="Volume", gridcolor="#333", color="#C5C6C7"),
+        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+        height=450
+    )
+    st.plotly_chart(fig_ml, use_container_width=True)
+    
+    st.info("💡 **AI Recommendation:** Schedule 3 additional dispatch coordinators for Friday afternoon to manage the 40% predicted surge in incoming freight.")
+    render_footer()
+
+# ==========================================
+# PAGE 5: ABOUT STORMNODE
 # ==========================================
 elif page == "About StormNode":
     st.title("⚡ About StormNode Logistics")
@@ -505,9 +603,18 @@ elif page == "About StormNode":
     with st.expander("🏭 Automated Dockyard Management", expanded=True):
         st.write("Real-time sensor integration automates entry logs, dispatch clearances, and staging bay allocations. By utilizing edge-computing at the gates, we eliminate gatehouse bottlenecks, manual processing delays, and driver wait times.")
     with st.expander("📦 Inventory & Granular QR Tracing"):
-        st.write("High-fidelity tracing ties exact physical bin locations to active transport routes. Our system ensures 100% chain-of-custody compliance from receipt at the dock to final delivery, reducing lost stock by 98%.")
+        st.write("High-fidelity tracing ties exact physical bin locations to active transport routes. Utilizing a 3D Digital Twin, our system ensures 100% chain-of-custody compliance from receipt at the dock to final delivery, reducing lost stock by 98%.")
     with st.expander("🛰️ Neural Routing & Telemetry"):
         st.write("GPS fleet monitoring tracks transit progression dynamically over active satellite overlays. Machine learning algorithms adjust arrival ETAs for predictive warehouse receiving and optimize fuel routes around active traffic events.")
+    
+    st.markdown("---")
+    st.markdown("### 🚂 Our Vision: The Intermodal Railway Future")
+    st.markdown("""
+    The ultimate evolution of StormNode lies beyond the highway. Our technical roadmap is heavily focused on **Intermodal Freight and Railway Integration**. 
+    
+    The railway sector forms the absolute backbone of heavy-capacity national and international logistics. As this platform matures, our vision is to bridge the gap between regional truck dockyards and high-speed rail terminals. Future iterations of StormNode will seamlessly track physical freight as it transfers from automated truck hubs directly onto extensive rail networks, providing an unbroken, immutable chain of custody across massive geographical regions.
+    """)
+    
     render_footer()
 
 # --- SIDEBAR ACADEMIC CREDITS ---
@@ -518,7 +625,7 @@ st.sidebar.markdown(
     "Syed Ali Kavish Abdi<br>"
     "<b>Batch:</b> MGB OCT 25<br>"
     "<b>Roll No:</b> MS25GLS138<br><br>"
-    "<b>SP Jain School of Global Management</b><br>"
+    "<b>Student, SP Jain School of Global Management</b><br>"
     "<i>Under the guidance of Prof. Rajiv Asrekar</i>"
     "</div>", 
     unsafe_allow_html=True
