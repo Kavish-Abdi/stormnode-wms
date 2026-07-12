@@ -34,7 +34,7 @@ st.sidebar.markdown(
     unsafe_allow_html=True
 )
 
-# --- HELPER FUNCTIONS ---
+# --- HELPER FUNCTIONS & ROUTING DATA ---
 def render_footer():
     st.markdown("---")
     st.markdown(
@@ -45,21 +45,49 @@ def render_footer():
         unsafe_allow_html=True
     )
 
-# --- GLOBAL AUTOREFRESH & SESSION INIT ---
-st_autorefresh(interval=60000, limit=1000, key="global_autorefresh")
+# Realistic Highway Waypoints (Following Sheikh Zayed Road / E11 to avoid crossing the sea)
+real_routes = {
+    "DXB Airport": [[24.9857, 55.0273], [25.0210, 55.0750], [25.0850, 55.1520], [25.1510, 55.2280], [25.2220, 55.3050], [25.2532, 55.3657]],
+    "Dubai Mall": [[24.9857, 55.0273], [25.0210, 55.0750], [25.0850, 55.1520], [25.1450, 55.2200], [25.1972, 55.2744]],
+    "Dubai Marina": [[24.9857, 55.0273], [25.0150, 55.0650], [25.0450, 55.1050], [25.0805, 55.1403]],
+    "Al Maktoum Int": [[24.9857, 55.0273], [24.9600, 55.0600], [24.9300, 55.1000], [24.8966, 55.1605]],
+    "Sharjah Ind": [[24.9857, 55.0273], [25.0500, 55.1100], [25.1200, 55.1900], [25.2000, 55.2800], [25.2600, 55.3500], [25.3134, 55.4055]]
+}
+
+def get_interpolated_pos(route, progress):
+    """Calculates the exact position of the truck smoothly along a multi-point road"""
+    if progress >= 1.0:
+        return route[-1][0], route[-1][1]
+    if progress <= 0.0:
+        return route[0][0], route[0][1]
+    
+    total_segments = len(route) - 1
+    cont_index = progress * total_segments
+    idx = int(cont_index)
+    frac = cont_index - idx
+    
+    lat1, lon1 = route[idx]
+    lat2, lon2 = route[idx+1]
+    
+    curr_lat = lat1 + (lat2 - lat1) * frac
+    curr_lon = lon1 + (lon2 - lon1) * frac
+    return curr_lat, curr_lon
+
+# --- GLOBAL AUTOREFRESH (Set to 3 seconds for Live Radar Movement!) ---
+st_autorefresh(interval=3000, limit=10000, key="global_autorefresh")
 
 if 'trigger_sound' not in st.session_state:
     st.session_state['trigger_sound'] = None
 
-# Fleet Progress & Traffic State - Locked attributes prevent selection drops!
+# Fleet Progress & Traffic State
 now_init = datetime.now()
 if 'fleet_state' not in st.session_state:
     st.session_state['fleet_state'] = [
-        {"id": "TRK-901", "dest": "DXB Airport", "d_lat": 25.2532, "d_lon": 55.3657, "progress": 0.15, "traffic": "Moderate", "color": "#FFBF00", "speed": 62, "eta": (now_init + timedelta(minutes=int(0.85*180))).strftime("%I:%M %p")},
-        {"id": "TRK-902", "dest": "Dubai Mall", "d_lat": 25.1972, "d_lon": 55.2744, "progress": 0.40, "traffic": "Heavy Traffic", "color": "#FF3333", "speed": 45, "eta": (now_init + timedelta(minutes=int(0.60*180))).strftime("%I:%M %p")},
-        {"id": "TRK-903", "dest": "Dubai Marina", "d_lat": 25.0805, "d_lon": 55.1403, "progress": 0.65, "traffic": "Clear", "color": "#00FF55", "speed": 85, "eta": (now_init + timedelta(minutes=int(0.35*180))).strftime("%I:%M %p")},
-        {"id": "TRK-904", "dest": "Al Maktoum Int", "d_lat": 24.8966, "d_lon": 55.1605, "progress": 0.20, "traffic": "Clear", "color": "#00FF55", "speed": 78, "eta": (now_init + timedelta(minutes=int(0.80*180))).strftime("%I:%M %p")},
-        {"id": "TRK-905", "dest": "Sharjah Ind", "d_lat": 25.3134, "d_lon": 55.4055, "progress": 0.80, "traffic": "Moderate", "color": "#FFBF00", "speed": 55, "eta": (now_init + timedelta(minutes=int(0.20*180))).strftime("%I:%M %p")}
+        {"id": "TRK-901", "dest": "DXB Airport", "progress": 0.15, "traffic": "Moderate", "color": "#FFBF00", "speed": 62, "eta": (now_init + timedelta(minutes=int(0.85*180))).strftime("%I:%M %p")},
+        {"id": "TRK-902", "dest": "Dubai Mall", "progress": 0.40, "traffic": "Heavy Traffic", "color": "#FF3333", "speed": 45, "eta": (now_init + timedelta(minutes=int(0.60*180))).strftime("%I:%M %p")},
+        {"id": "TRK-903", "dest": "Dubai Marina", "progress": 0.65, "traffic": "Clear", "color": "#00FF55", "speed": 85, "eta": (now_init + timedelta(minutes=int(0.35*180))).strftime("%I:%M %p")},
+        {"id": "TRK-904", "dest": "Al Maktoum Int", "progress": 0.20, "traffic": "Clear", "color": "#00FF55", "speed": 78, "eta": (now_init + timedelta(minutes=int(0.80*180))).strftime("%I:%M %p")},
+        {"id": "TRK-905", "dest": "Sharjah Ind", "progress": 0.80, "traffic": "Moderate", "color": "#FFBF00", "speed": 55, "eta": (now_init + timedelta(minutes=int(0.20*180))).strftime("%I:%M %p")}
     ]
 
 if 'truck_logs' not in st.session_state:
@@ -108,20 +136,22 @@ page = st.sidebar.radio("Main Menu", [
 
 # --- GLOBAL BACKGROUND EVENT SIMULATOR ---
 now = datetime.now()
+
+# 1. LIVE RADAR UPDATES (Runs every 3 seconds to move trucks smoothly)
+for t in st.session_state['fleet_state']:
+    # Small increment creates smooth, live movement
+    t['progress'] += random.uniform(0.002, 0.006)
+    if t['progress'] >= 1.0:
+        t['progress'] = 0.05  # Loop back for presentation continuity
+        
+    t['speed'] = random.randint(45, 90)
+    minutes_left = int((1.0 - t['progress']) * 180)
+    t['eta'] = (now + timedelta(minutes=minutes_left)).strftime("%I:%M %p") if t['progress'] <= 0.95 else "Arriving"
+
+# 2. DOCKYARD AUTOMATION (Only triggers if 58+ seconds have passed)
 if (now - st.session_state['last_auto_update']).total_seconds() >= 58:  
     st.session_state['last_auto_update'] = now
     
-    # Progress the active fleet along their routes and update locked stats safely
-    for t in st.session_state['fleet_state']:
-        t['progress'] += random.uniform(0.02, 0.08)
-        if t['progress'] >= 1.0:
-            t['progress'] = 0.05  # Loop back for presentation continuity
-            
-        t['speed'] = random.randint(45, 90)
-        minutes_left = int((1.0 - t['progress']) * 180)
-        t['eta'] = (now + timedelta(minutes=minutes_left)).strftime("%I:%M %p") if t['progress'] <= 0.95 else "Arriving"
-            
-    # Dockyard Automation
     locations = ["Whse A - Dock 1", "Whse A - Dock 2", "Whse B - Dock 1", "Whse C - Heavy Freight"]
     if st.session_state['auto_toggle'] == "entry":
         auto_truck_id = f"TRK-{random.randint(1000, 9999)}"
@@ -284,19 +314,18 @@ elif page == "GPS & Fleet Tracking":
     st.markdown("Real-time telemetry, dynamic traffic conditions, and ETA tracking for active fleets.")
     st.markdown("👉 **Click directly on a Truck ID row in the table to view its live route!**")
 
-    hub_lat, hub_lon = 24.9857, 55.0273
-    
     # Generate live telemetry data safely pulling from stabilized state
     fleet_data = []
     for d in st.session_state['fleet_state']:
-        c_lat = float(hub_lat + (d["d_lat"] - hub_lat) * d["progress"])
-        c_lon = float(hub_lon + (d["d_lon"] - hub_lon) * d["progress"])
+        route_coords = real_routes[d["dest"]]
+        # Calculate exactly where the truck is on the curved route
+        c_lat, c_lon = get_interpolated_pos(route_coords, d["progress"])
         
         fleet_data.append({
             "Truck": d["id"], "Destination": d["dest"],
-            "start_lat": hub_lat, "start_lon": hub_lon,
+            "start_lat": route_coords[0][0], "start_lon": route_coords[0][1],
             "curr_lat": c_lat, "curr_lon": c_lon,
-            "dest_lat": d["d_lat"], "dest_lon": d["d_lon"],
+            "dest_lat": route_coords[-1][0], "dest_lon": route_coords[-1][1],
             "speed": d["speed"], 
             "Traffic Condition": d["traffic"],
             "Route Color": d["color"],
@@ -334,17 +363,18 @@ elif page == "GPS & Fleet Tracking":
         map_center = {"lat": 25.12, "lon": 55.20}
     else:
         plot_data = [d for d in fleet_data if d["Truck"] == selected_truck]
-        map_zoom = 10.5
+        map_zoom = 11
         map_center = {"lat": plot_data[0]["curr_lat"], "lon": plot_data[0]["curr_lon"]}
     
     for d in plot_data:
-        # Route Line - Colors change based on traffic condition!
         line_color = d['Route Color'] if selected_truck != "All Active Fleet" else 'rgba(255, 255, 255, 0.2)'
+        route_coords = real_routes[d['Destination']]
         
+        # Real Waypoint Route Line
         fig.add_trace(go.Scattermap(
             mode="lines",
-            lon=[d['start_lon'], d['curr_lon'], d['dest_lon']],
-            lat=[d['start_lat'], d['curr_lat'], d['dest_lat']],
+            lon=[p[1] for p in route_coords],
+            lat=[p[0] for p in route_coords],
             line=dict(width=4, color=line_color),
             hoverinfo='none'
         ))
