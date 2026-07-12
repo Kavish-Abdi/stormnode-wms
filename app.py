@@ -295,74 +295,72 @@ elif page == "GPS & Fleet Tracking":
         })
     df_fleet = pd.DataFrame(fleet_data)
 
-    # Interactive Focus Mode
-    col1, col2 = st.columns([1, 2.5])
+    # REVERTED LAYOUT: Table on top, Map on bottom
+    st.dataframe(df_fleet[["Truck", "Destination", "speed", "status"]])
+
+    st.markdown("---")
+    st.subheader("📡 Interactive Satellite Telemetry")
     
-    with col1:
-        st.markdown("### Active Missions")
-        # Dropdown to isolate specific trucks
-        selected_truck = st.selectbox("🎯 Target ID Focus:", ["All Active Fleet"] + df_fleet["Truck"].tolist())
-        st.dataframe(df_fleet[["Truck", "Destination", "speed", "status"]])
-
-    with col2:
-        st.markdown("### Satellite Telemetry")
-        fig = go.Figure()
+    # Dropdown to isolate specific trucks
+    selected_truck = st.selectbox("🎯 Target ID Focus (Select a truck to view route):", ["All Active Fleet"] + df_fleet["Truck"].tolist())
+    
+    fig = go.Figure()
+    
+    # Filter map logic based on the dropdown selection
+    if selected_truck == "All Active Fleet":
+        plot_data = fleet_data
+        map_zoom = 9
+        map_center = {"lat": 25.12, "lon": 55.20}
+    else:
+        plot_data = [d for d in fleet_data if d["Truck"] == selected_truck]
+        map_zoom = 10.5
+        map_center = {"lat": plot_data[0]["curr_lat"], "lon": plot_data[0]["curr_lon"]}
+    
+    for d in plot_data:
+        # High-Visibility Route Line
+        fig.add_trace(go.Scattermap(
+            mode="lines",
+            lon=[d['start_lon'], d['curr_lon'], d['dest_lon']],
+            lat=[d['start_lat'], d['curr_lat'], d['dest_lat']],
+            line=dict(width=3, color='#00D2FF' if selected_truck != "All Active Fleet" else 'rgba(255, 255, 255, 0.2)'),
+            hoverinfo='none'
+        ))
         
-        # Filter map logic based on the dropdown selection
-        if selected_truck == "All Active Fleet":
-            plot_data = fleet_data
-            map_zoom = 9
-            map_center = {"lat": 25.12, "lon": 55.20}
-        else:
-            plot_data = [d for d in fleet_data if d["Truck"] == selected_truck]
-            map_zoom = 11.5
-            map_center = {"lat": plot_data[0]["curr_lat"], "lon": plot_data[0]["curr_lon"]}
-        
-        for d in plot_data:
-            # High-Visibility Route Line
-            fig.add_trace(go.Scattermap(
-                mode="lines",
-                lon=[d['start_lon'], d['curr_lon'], d['dest_lon']],
-                lat=[d['start_lat'], d['curr_lat'], d['dest_lat']],
-                line=dict(width=3, color='#00D2FF' if selected_truck != "All Active Fleet" else 'rgba(255, 255, 255, 0.3)'),
-                hoverinfo='none'
-            ))
-            
-            # Origin & Destination Markers (Only show in Focus Mode to avoid clutter)
-            if selected_truck != "All Active Fleet":
-                fig.add_trace(go.Scattermap(
-                    mode="markers",
-                    lon=[d['start_lon']], lat=[d['start_lat']],
-                    marker=dict(size=12, color='white'),
-                    name="Origin", text="StormNode Hub Bay", hoverinfo='text'
-                ))
-                fig.add_trace(go.Scattermap(
-                    mode="markers",
-                    lon=[d['dest_lon']], lat=[d['dest_lat']],
-                    marker=dict(size=12, color='#00FF55'),
-                    name="Destination", text=f"Target: {d['Destination']}", hoverinfo='text'
-                ))
-
-            # Moving Truck Marker
+        # Origin & Destination Markers (Only show in Focus Mode)
+        if selected_truck != "All Active Fleet":
             fig.add_trace(go.Scattermap(
                 mode="markers",
-                lon=[d['curr_lon']],
-                lat=[d['curr_lat']],
-                marker=dict(size=16, color='#00D2FF'),
-                name=d['Truck'],
-                text=f"<b>{d['Truck']}</b><br>Speed: {d['speed']} km/h<br>Heading to: {d['Destination']}",
-                hoverinfo='text'
+                lon=[d['start_lon']], lat=[d['start_lat']],
+                marker=dict(size=12, color='white'),
+                name="Origin", text="StormNode Hub Bay", hoverinfo='text'
+            ))
+            fig.add_trace(go.Scattermap(
+                mode="markers",
+                lon=[d['dest_lon']], lat=[d['dest_lat']],
+                marker=dict(size=12, color='#00FF55'),
+                name="Destination", text=f"Target: {d['Destination']}", hoverinfo='text'
             ))
 
-        fig.update_layout(
-            map_style="carto-darkmatter",
-            map_zoom=map_zoom,
-            map_center=map_center,
-            margin={"r":0,"t":0,"l":0,"b":0},
-            showlegend=False,
-            height=500
-        )
-        st.plotly_chart(fig)
+        # Moving Truck Marker
+        fig.add_trace(go.Scattermap(
+            mode="markers",
+            lon=[d['curr_lon']],
+            lat=[d['curr_lat']],
+            marker=dict(size=16, color='#00D2FF'),
+            name=d['Truck'],
+            text=f"<b>{d['Truck']}</b><br>Speed: {d['speed']} km/h<br>Heading to: {d['Destination']}",
+            hoverinfo='text'
+        ))
+
+    fig.update_layout(
+        map_style="carto-darkmatter",
+        map_zoom=map_zoom,
+        map_center=map_center,
+        margin={"r":0,"t":0,"l":0,"b":0},
+        showlegend=False,
+        height=550
+    )
+    st.plotly_chart(fig)
     
     render_footer()
 
@@ -371,19 +369,50 @@ elif page == "GPS & Fleet Tracking":
 # ==========================================
 elif page == "About StormNode":
     st.title("⚡ About StormNode Logistics")
-    st.image("https://images.unsplash.com/photo-1586528116311-ad8ed74512fc?q=80&w=2000&auto=format&fit=crop", caption="StormNode Next-Generation Fulfillment Hub")
-    
     st.markdown("### Powering the Connected Supply Chain")
+    
+    # Using a highly reliable static image URL
+    st.image("https://images.unsplash.com/photo-1553413077-190dd305871c?auto=format&fit=crop&w=1200&q=80", caption="StormNode Next-Generation Fulfillment Center")
+    
+    st.markdown("---")
+    
+    # LIVE SYSTEM METRICS
+    st.subheader("Global Operations At A Glance")
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("Daily Freight Volume", "4,850 Tons", "+12% this week")
+    col2.metric("Active Supply Nodes", "244", "+3 active")
+    col3.metric("Fleet Efficiency", "94.2%", "+1.5%")
+    col4.metric("System Uptime", "99.999%", "Optimal")
+    
+    st.markdown("---")
+    
     st.markdown("""
     **StormNode Logistics** is a next-generation freight and warehousing platform designed to bridge the gap between heavy physical freight and cutting-edge digital infrastructure. 
     
     Founded in 2026, our mission is to completely eliminate supply chain opacity. Traditional logistics rely on manual data entry, fractured communication, and fragmented tracking systems. At StormNode, we treat every warehouse, dispatch truck, and cargo batch as a vital "node" in a highly connected, automated neural network.
-
-    **Core Architecture Modules:**
-    * **Automated Dockyard Management:** Real-time sensor integration automates entry, dispatch logs, and staging bay allocations, effectively eliminating gatehouse bottlenecks and manual processing delays.
-    * **Inventory & QR Tracing:** High-fidelity, granular tracing ties exact physical bin locations to active transport routes, ensuring 100% chain-of-custody compliance from receipt to delivery.
-    * **Neural Routing & Telemetry:** GPS fleet monitoring tracks transit progression dynamically over active satellite overlays, adjusting arrival ETAs for predictive warehouse receiving and optimized fuel routing.
     """)
+    
+    # INTERACTIVE EXPANDERS FOR MORE INFO
+    st.markdown("### Platform Capabilities")
+    
+    with st.expander("🏭 Automated Dockyard Management", expanded=True):
+        st.write("""
+        Real-time sensor integration automates entry logs, dispatch clearances, and staging bay allocations. 
+        By utilizing edge-computing at the gates, we eliminate gatehouse bottlenecks, manual processing delays, and driver wait times. 
+        """)
+        
+    with st.expander("📦 Inventory & Granular QR Tracing"):
+        st.write("""
+        High-fidelity tracing ties exact physical bin locations to active transport routes. 
+        Our system ensures 100% chain-of-custody compliance from receipt at the dock to final delivery, reducing lost stock by 98%.
+        """)
+        
+    with st.expander("🛰️ Neural Routing & Telemetry"):
+        st.write("""
+        GPS fleet monitoring tracks transit progression dynamically over active satellite overlays. 
+        Machine learning algorithms adjust arrival ETAs for predictive warehouse receiving and optimize fuel routes around active traffic events.
+        """)
+        
     render_footer()
 
 # --- SIDEBAR ACADEMIC CREDITS ---
