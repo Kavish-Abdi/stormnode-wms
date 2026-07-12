@@ -98,7 +98,7 @@ st_autorefresh(interval=5000, limit=10000, key="global_autorefresh")
 
 if 'trigger_sound' not in st.session_state: st.session_state['trigger_sound'] = None
 
-# NEW INIT: Blockchain Ledger
+# INIT: Blockchain Ledger
 if 'blockchain_ledger' not in st.session_state:
     st.session_state['blockchain_ledger'] = [
         f"[{datetime.now().strftime('%H:%M:%S')}] SYSTEM INITIALIZED: Genesis Block Created",
@@ -146,7 +146,6 @@ if 'inventory' not in st.session_state:
     items = ["Semiconductors", "Lithium Batteries", "Auto Parts", "Medical Supplies", "Consumer Tech", "Machinery"]
     sides = ["North Wing", "South Wing", "East Wing", "West Wing"]
     for i in range(25):
-        # Added X, Y, Z coordinates for 3D Mapping
         synthetic_inv.append({
             "Batch_QR": f"QR-{random.randint(1000, 9999)}", 
             "Item_Name": random.choice(items), 
@@ -336,19 +335,16 @@ elif page == "Inventory & QR Tracking":
                     if dispatch_truck not in available_trucks:
                         st.error(f"❌ Invalid Transport Protocol: '{dispatch_truck}' is not currently at the dock.")
                     else:
-                        # 1. Update Inventory Database
                         idx = st.session_state['inventory'].index[st.session_state['inventory']['Batch_QR'] == dispatch_qr].tolist()[0]
                         st.session_state['inventory'].at[idx, "Time_Dispatched"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                         st.session_state['inventory'].at[idx, "Dispatched_On_Truck"] = dispatch_truck
                         st.session_state['inventory'].at[idx, "Status"] = "In Transit"
                         
-                        # 2. Update Dockyard Logs
                         t_idx = st.session_state['truck_logs'].index[st.session_state['truck_logs']['Truck_ID'] == dispatch_truck].tolist()[0]
                         st.session_state['truck_logs'].at[t_idx, "Exit_Time"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                         st.session_state['truck_logs'].at[t_idx, "Status"] = "Dispatched"
                         st.session_state['truck_logs'].at[t_idx, "Last_Updated"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                         
-                        # 3. Create SECURE BLOCKCHAIN HASH
                         raw_data = f"{dispatch_qr}-{dispatch_truck}-{datetime.now().isoformat()}"
                         tx_hash = hashlib.sha256(raw_data.encode()).hexdigest()
                         log_entry = f"[{datetime.now().strftime('%H:%M:%S')}] TX_HASH: 0x{tx_hash[:20]}... 🟢 SECURED: {dispatch_qr} -> {dispatch_truck}"
@@ -358,14 +354,12 @@ elif page == "Inventory & QR Tracking":
                         st.session_state['trigger_sound'] = "exit"
                         st.rerun()
 
-    # BLOCKCHAIN LIVE TERMINAL
     st.markdown("#### 🔗 Live Immutable Ledger Terminal")
     ledger_content = "<br>".join(st.session_state['blockchain_ledger'])
     st.markdown(f'<div class="crypto-terminal">{ledger_content}</div>', unsafe_allow_html=True)
     
     st.markdown("---")
 
-    # NEW FEATURE: 3D DIGITAL TWIN
     st.subheader("🟦 3D Warehouse Digital Twin")
     st.markdown("Interactive 3D scatter matrix mirroring physical storage architecture. **Click and drag to rotate.**")
     
@@ -373,27 +367,18 @@ elif page == "Inventory & QR Tracking":
     
     if not current_stock.empty:
         fig_3d = go.Figure(data=[go.Scatter3d(
-            x=current_stock['X_Coord'], 
-            y=current_stock['Y_Coord'], 
-            z=current_stock['Z_Coord'],
-            mode='markers',
-            text=current_stock['Batch_QR'] + "<br>" + current_stock['Item_Name'],
+            x=current_stock['X_Coord'], y=current_stock['Y_Coord'], z=current_stock['Z_Coord'],
+            mode='markers', text=current_stock['Batch_QR'] + "<br>" + current_stock['Item_Name'],
             hoverinfo='text',
             marker=dict(
-                size=8,
-                color=current_stock['Z_Coord'], # Color scale by height
-                colorscale='Tealgrn',
-                opacity=0.9,
-                line=dict(width=1, color='white')
+                size=8, color=current_stock['Z_Coord'], colorscale='Tealgrn',
+                opacity=0.9, line=dict(width=1, color='white')
             )
         )])
         fig_3d.update_layout(
-            margin=dict(l=0, r=0, b=0, t=0),
-            paper_bgcolor="rgba(0,0,0,0)",
+            margin=dict(l=0, r=0, b=0, t=0), paper_bgcolor="rgba(0,0,0,0)",
             scene=dict(
-                xaxis_title='Aisle Grid (X)',
-                yaxis_title='Rack Grid (Y)',
-                zaxis_title='Vertical Shelf (Z)',
+                xaxis_title='Aisle Grid (X)', yaxis_title='Rack Grid (Y)', zaxis_title='Vertical Shelf (Z)',
                 xaxis=dict(gridcolor='#333', backgroundcolor='rgba(0,0,0,0)'),
                 yaxis=dict(gridcolor='#333', backgroundcolor='rgba(0,0,0,0)'),
                 zaxis=dict(gridcolor='#333', backgroundcolor='rgba(0,0,0,0)'),
@@ -528,22 +513,17 @@ elif page == "AI Predictive Analytics":
     col3.metric("Prediction Accuracy", "96.4%", "+2.1%")
     st.markdown("---")
 
-    # Generate smooth spline-like simulated forecast data
     days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
     expected_trucks = [120, 145, 130, 190, 240, 100, 85]
     
     fig_ml = go.Figure()
     
-    # Plotting the smooth prediction line
     fig_ml.add_trace(go.Scatter(
-        x=days, y=expected_trucks,
-        mode='lines+markers',
+        x=days, y=expected_trucks, mode='lines+markers',
         line=dict(color='#00D2FF', width=4, shape='spline'),
-        marker=dict(size=10, color='white'),
-        name="Predicted Traffic"
+        marker=dict(size=10, color='white'), name="Predicted Traffic"
     ))
     
-    # Highlighting Critical Bottlenecks (e.g., Friday spike)
     fig_ml.add_shape(
         type="rect", x0="Thu", y0=180, x1="Fri", y1=260,
         fillcolor="rgba(255, 51, 51, 0.2)", line=dict(width=0), layer="below"
@@ -563,7 +543,10 @@ elif page == "AI Predictive Analytics":
     )
     st.plotly_chart(fig_ml, use_container_width=True)
     
-    st.info("💡 **AI Recommendation:** Schedule 3 additional dispatch coordinators for Friday afternoon to manage the 40% predicted surge in incoming freight.")
+    # NEW FEATURE: Root Cause Diagnostic for the bottleneck
+    st.error("🚨 **Root Cause Diagnostic:** Neural network cross-referencing indicates an unscheduled high-capacity **railway freight exchange** is overlapping with our peak Friday outbound highway dispatch window. This intermodal collision will exhaust available staging bays.")
+    st.info("💡 **AI Recommendation:** Divert 40% of Friday's highway fleet to the secondary holding zone and schedule 3 additional cross-docking coordinators to manage the railway offload.")
+    
     render_footer()
 
 # ==========================================
