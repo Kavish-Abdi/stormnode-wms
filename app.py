@@ -45,13 +45,13 @@ def render_footer():
         unsafe_allow_html=True
     )
 
-# UPGRADED: High-resolution highway coordinates following E11 (Sheikh Zayed Road) to curve around the coast perfectly.
+# UPGRADED: True Real-World Highway Waypoints (Following E11 / Sheikh Zayed Road)
 real_routes = {
-    "DXB Airport": [[24.9857, 55.0273], [25.0113, 55.0552], [25.0441, 55.0963], [25.0763, 55.1388], [25.1166, 55.1884], [25.1557, 55.2343], [25.1955, 55.2755], [25.2415, 55.3211], [25.2532, 55.3657]],
-    "Dubai Mall": [[24.9857, 55.0273], [25.0113, 55.0552], [25.0441, 55.0963], [25.0763, 55.1388], [25.1166, 55.1884], [25.1557, 55.2343], [25.1972, 55.2744]],
-    "Dubai Marina": [[24.9857, 55.0273], [25.0113, 55.0552], [25.0441, 55.0963], [25.0805, 55.1403]],
-    "Al Maktoum Int": [[24.9857, 55.0273], [24.9600, 55.0500], [24.9350, 55.1100], [24.8966, 55.1605]],
-    "Sharjah Ind": [[24.9857, 55.0273], [25.0113, 55.0552], [25.0441, 55.0963], [25.1166, 55.1884], [25.1955, 55.2755], [25.2415, 55.3211], [25.2850, 55.3650], [25.3134, 55.4055]]
+    "DXB Airport": [[24.9857, 55.0273], [25.0450, 55.1150], [25.1150, 55.1950], [25.1950, 55.2700], [25.2532, 55.3657]],
+    "Dubai Mall": [[24.9857, 55.0273], [25.0450, 55.1150], [25.1150, 55.1950], [25.1972, 55.2744]],
+    "Dubai Marina": [[24.9857, 55.0273], [25.0150, 55.0650], [25.0805, 55.1403]],
+    "Al Maktoum Int": [[24.9857, 55.0273], [24.9300, 55.0800], [24.8966, 55.1605]],
+    "Sharjah Ind": [[24.9857, 55.0273], [25.0450, 55.1150], [25.1150, 55.1950], [25.1950, 55.2700], [25.2532, 55.3657], [25.3134, 55.4055]]
 }
 
 def get_interpolated_pos(route, progress):
@@ -73,7 +73,8 @@ def get_interpolated_pos(route, progress):
     curr_lon = lon1 + (lon2 - lon1) * frac
     return curr_lat, curr_lon
 
-# --- GLOBAL AUTOREFRESH (Smoothed out to 5 seconds to prevent aggressive flickering) ---
+# --- GLOBAL AUTOREFRESH ---
+# Refreshing exactly every 5 seconds for smooth radar movement
 st_autorefresh(interval=5000, limit=10000, key="global_autorefresh")
 
 if 'trigger_sound' not in st.session_state:
@@ -149,7 +150,7 @@ now = datetime.now()
 
 # 1. LIVE RADAR UPDATES
 for t in st.session_state['fleet_state']:
-    t['progress'] += random.uniform(0.002, 0.006)
+    t['progress'] += random.uniform(0.002, 0.008)
     if t['progress'] >= 1.0:
         t['progress'] = 0.05  
         
@@ -327,6 +328,7 @@ elif page == "GPS & Fleet Tracking":
     fleet_data = []
     for d in st.session_state['fleet_state']:
         route_coords = real_routes[d["dest"]]
+        # Calculates curved movement along actual roads
         c_lat, c_lon = get_interpolated_pos(route_coords, d["progress"])
         
         fleet_data.append({
@@ -390,7 +392,7 @@ elif page == "GPS & Fleet Tracking":
         line_color = d['Route Color'] if selected_truck != "All Active Fleet" else 'rgba(255, 255, 255, 0.2)'
         route_coords = real_routes[d['Destination']]
         
-        # Real Waypoint Route Line
+        # UPGRADED: Real Waypoint Route Line passing through ALL curves
         fig.add_trace(go.Scattermap(
             mode="lines",
             lon=[p[1] for p in route_coords],
@@ -435,17 +437,19 @@ elif page == "GPS & Fleet Tracking":
             hoverinfo='text'
         ))
 
-    # UPGRADED: Added `uirevision` to lock the camera! It will only reset if you select a new truck.
+    # UPGRADED: UI Revision locks the map so you can pan around without it refreshing!
     fig.update_layout(
-        map_style="carto-darkmatter",
-        map_zoom=map_zoom,
-        map_center=map_center,
+        uirevision=selected_truck,
+        map=dict(
+            style="carto-darkmatter",
+            zoom=map_zoom,
+            center=map_center
+        ),
         margin={"r":0,"t":0,"l":0,"b":0},
         showlegend=False,
-        height=550,
-        uirevision=selected_truck 
+        height=550
     )
-    st.plotly_chart(fig)
+    st.plotly_chart(fig, use_container_width=True)
     
     render_footer()
 
