@@ -45,17 +45,15 @@ def render_footer():
         unsafe_allow_html=True
     )
 
-# UPGRADED: True Real-World Highway Waypoints (Following E11 / Sheikh Zayed Road)
 real_routes = {
-    "DXB Airport": [[24.9857, 55.0273], [25.0450, 55.1150], [25.1150, 55.1950], [25.1950, 55.2700], [25.2532, 55.3657]],
-    "Dubai Mall": [[24.9857, 55.0273], [25.0450, 55.1150], [25.1150, 55.1950], [25.1972, 55.2744]],
-    "Dubai Marina": [[24.9857, 55.0273], [25.0150, 55.0650], [25.0805, 55.1403]],
-    "Al Maktoum Int": [[24.9857, 55.0273], [24.9300, 55.0800], [24.8966, 55.1605]],
-    "Sharjah Ind": [[24.9857, 55.0273], [25.0450, 55.1150], [25.1150, 55.1950], [25.1950, 55.2700], [25.2532, 55.3657], [25.3134, 55.4055]]
+    "DXB Airport": [[24.9857, 55.0273], [25.0113, 55.0552], [25.0441, 55.0963], [25.0763, 55.1388], [25.1166, 55.1884], [25.1557, 55.2343], [25.1955, 55.2755], [25.2415, 55.3211], [25.2532, 55.3657]],
+    "Dubai Mall": [[24.9857, 55.0273], [25.0113, 55.0552], [25.0441, 55.0963], [25.0763, 55.1388], [25.1166, 55.1884], [25.1557, 55.2343], [25.1972, 55.2744]],
+    "Dubai Marina": [[24.9857, 55.0273], [25.0113, 55.0552], [25.0441, 55.0963], [25.0805, 55.1403]],
+    "Al Maktoum Int": [[24.9857, 55.0273], [24.9600, 55.0500], [24.9350, 55.1100], [24.8966, 55.1605]],
+    "Sharjah Ind": [[24.9857, 55.0273], [25.0113, 55.0552], [25.0441, 55.0963], [25.1166, 55.1884], [25.1955, 55.2755], [25.2415, 55.3211], [25.2850, 55.3650], [25.3134, 55.4055]]
 }
 
 def get_interpolated_pos(route, progress):
-    """Calculates the exact position of the truck smoothly along a curved multi-point road"""
     if progress >= 1.0:
         return route[-1][0], route[-1][1]
     if progress <= 0.0:
@@ -74,13 +72,11 @@ def get_interpolated_pos(route, progress):
     return curr_lat, curr_lon
 
 # --- GLOBAL AUTOREFRESH ---
-# Refreshing exactly every 5 seconds for smooth radar movement
 st_autorefresh(interval=5000, limit=10000, key="global_autorefresh")
 
 if 'trigger_sound' not in st.session_state:
     st.session_state['trigger_sound'] = None
 
-# STATIC TABLE DATA (This prevents the table click from erasing!)
 if 'static_fleet_df' not in st.session_state:
     st.session_state['static_fleet_df'] = pd.DataFrame([
         {"Truck ID": "TRK-901", "Destination": "DXB Airport", "Status": "Active En Route"},
@@ -90,7 +86,6 @@ if 'static_fleet_df' not in st.session_state:
         {"Truck ID": "TRK-905", "Destination": "Sharjah Ind", "Status": "Active En Route"}
     ])
 
-# Fleet Progress & Traffic State
 now_init = datetime.now()
 if 'fleet_state' not in st.session_state:
     st.session_state['fleet_state'] = [
@@ -148,9 +143,8 @@ page = st.sidebar.radio("Main Menu", [
 # --- GLOBAL BACKGROUND EVENT SIMULATOR ---
 now = datetime.now()
 
-# 1. LIVE RADAR UPDATES
 for t in st.session_state['fleet_state']:
-    t['progress'] += random.uniform(0.002, 0.008)
+    t['progress'] += random.uniform(0.002, 0.006)
     if t['progress'] >= 1.0:
         t['progress'] = 0.05  
         
@@ -158,28 +152,22 @@ for t in st.session_state['fleet_state']:
     minutes_left = int((1.0 - t['progress']) * 180)
     t['eta'] = (now + timedelta(minutes=minutes_left)).strftime("%I:%M %p") if t['progress'] <= 0.95 else "Arriving"
 
-# 2. DOCKYARD AUTOMATION
 if (now - st.session_state['last_auto_update']).total_seconds() >= 58:  
     st.session_state['last_auto_update'] = now
-    
     locations = ["Whse A - Dock 1", "Whse A - Dock 2", "Whse B - Dock 1", "Whse C - Heavy Freight"]
+    
     if st.session_state['auto_toggle'] == "entry":
         auto_truck_id = f"TRK-{random.randint(1000, 9999)}"
         new_entry = pd.DataFrame([{
-            "Truck_ID": auto_truck_id, 
-            "Entry_Time": now.strftime("%Y-%m-%d %H:%M:%S"), 
-            "Exit_Time": "Pending", 
-            "Warehouse_Location": random.choice(locations),
-            "Status": "At Dock",
-            "Last_Updated": now.strftime("%Y-%m-%d %H:%M:%S")
+            "Truck_ID": auto_truck_id, "Entry_Time": now.strftime("%Y-%m-%d %H:%M:%S"), 
+            "Exit_Time": "Pending", "Warehouse_Location": random.choice(locations),
+            "Status": "At Dock", "Last_Updated": now.strftime("%Y-%m-%d %H:%M:%S")
         }])
         st.session_state['truck_logs'] = pd.concat([new_entry, st.session_state['truck_logs']], ignore_index=True)
         st.session_state['auto_toggle'] = "exit"
         st.session_state['trigger_sound'] = "entry"
-        
         if page != "Dockyard Management":
             st.toast(f"📡 Fleet Update: {auto_truck_id} has arrived at the dock.", icon="🟢")
-            
     else:
         docked = st.session_state['truck_logs'][st.session_state['truck_logs']["Status"] == "At Dock"]
         if not docked.empty:
@@ -188,14 +176,11 @@ if (now - st.session_state['last_auto_update']).total_seconds() >= 58:
             st.session_state['truck_logs'].at[idx, "Exit_Time"] = now.strftime("%Y-%m-%d %H:%M:%S")
             st.session_state['truck_logs'].at[idx, "Status"] = "Dispatched"
             st.session_state['truck_logs'].at[idx, "Last_Updated"] = now.strftime("%Y-%m-%d %H:%M:%S")
-        
         st.session_state['auto_toggle'] = "entry"
         st.session_state['trigger_sound'] = "exit"
-        
         if page != "Dockyard Management":
             st.toast(f"📡 Fleet Update: {t_id} was safely dispatched.", icon="🔴")
 
-# --- PROCESS GLOBAL AUDIO ---
 audio_tag = ""
 if st.session_state['trigger_sound'] == "entry":
     audio_tag = f"""<audio autoplay><source src="https://assets.mixkit.co/active_storage/sfx/2573/2573-preview.mp3?t={time.time()}" type="audio/mpeg"></audio>"""
@@ -214,24 +199,13 @@ if page != "Dockyard Management" and audio_tag:
 if page == "Dockyard Management":
     st.title("🚛 Dockyard Management")
     st.markdown("Automated gate sensors and real-time dispatch control.")
-
     df = st.session_state['truck_logs']
-    df_docked = df[df["Status"] == "At Dock"]
-    df_dispatched = df[df["Status"] == "Dispatched"]
-
+    
     css_animations = f"""
     {audio_tag}
     <style>
-    @keyframes blink-animation-cyan {{
-        0% {{ background-color: #00D2FF; color: #000000; }}
-        50% {{ background-color: transparent; color: #C5C6C7; }}
-        100% {{ background-color: #00D2FF; color: #000000; }}
-    }}
-    @keyframes blink-animation-green {{
-        0% {{ background-color: #00FF55; color: #000000; }}
-        50% {{ background-color: transparent; color: #C5C6C7; }}
-        100% {{ background-color: #00FF55; color: #000000; }}
-    }}
+    @keyframes blink-animation-cyan {{ 0% {{ background-color: #00D2FF; color: #000000; }} 50% {{ background-color: transparent; color: #C5C6C7; }} 100% {{ background-color: #00D2FF; color: #000000; }} }}
+    @keyframes blink-animation-green {{ 0% {{ background-color: #00FF55; color: #000000; }} 50% {{ background-color: transparent; color: #C5C6C7; }} 100% {{ background-color: #00FF55; color: #000000; }} }}
     .blinking-row-cyan {{ animation: blink-animation-cyan 1s linear 10; }}
     .blinking-row-green {{ animation: blink-animation-green 1s linear 10; }}
     .custom-table {{ width: 100%; text-align: left; border-collapse: collapse; color: #C5C6C7; font-size: 14px; margin-bottom: 20px;}}
@@ -243,9 +217,8 @@ if page == "Dockyard Management":
     st.markdown("---")
     st.subheader("🟢 Active Fleet (At Dock)")
     html_docked = f"{css_animations}<table class='custom-table'><thead><tr><th>Truck ID</th><th>Entry Time</th><th>Exit Time</th><th>Location</th><th>Status</th></tr></thead><tbody>"
-    for _, row in df_docked.iterrows():
-        update_time = datetime.strptime(row['Last_Updated'], "%Y-%m-%d %H:%M:%S")
-        time_diff = (now - update_time).total_seconds()
+    for _, row in df[df["Status"] == "At Dock"].iterrows():
+        time_diff = (now - datetime.strptime(row['Last_Updated'], "%Y-%m-%d %H:%M:%S")).total_seconds()
         row_class = "blinking-row-cyan" if time_diff < 15 else ""
         html_docked += f"<tr class='{row_class}'><td>{row['Truck_ID']}</td><td>{row['Entry_Time']}</td><td>{row['Exit_Time']}</td><td>{row['Warehouse_Location']}</td><td>{row['Status']}</td></tr>"
     html_docked += "</tbody></table>"
@@ -254,14 +227,12 @@ if page == "Dockyard Management":
     st.markdown("---")
     st.subheader("🔴 Dispatched Log")
     html_dispatched = f"<table class='custom-table'><thead><tr><th>Truck ID</th><th>Entry Time</th><th>Exit Time</th><th>Location</th><th>Status</th></tr></thead><tbody>"
-    for _, row in df_dispatched.iterrows():
-        update_time = datetime.strptime(row['Last_Updated'], "%Y-%m-%d %H:%M:%S")
-        time_diff = (now - update_time).total_seconds()
+    for _, row in df[df["Status"] == "Dispatched"].iterrows():
+        time_diff = (now - datetime.strptime(row['Last_Updated'], "%Y-%m-%d %H:%M:%S")).total_seconds()
         row_class = "blinking-row-green" if time_diff < 15 else ""
         html_dispatched += f"<tr class='{row_class}'><td>{row['Truck_ID']}</td><td>{row['Entry_Time']}</td><td>{row['Exit_Time']}</td><td>{row['Warehouse_Location']}</td><td>{row['Status']}</td></tr>"
     html_dispatched += "</tbody></table>"
     st.markdown(html_dispatched, unsafe_allow_html=True)
-
     render_footer()
 
 # ==========================================
@@ -270,7 +241,6 @@ if page == "Dockyard Management":
 elif page == "Inventory & QR Tracking":
     st.title("📦 Inventory & Warehouse Tracing")
     st.markdown("Pinpoint exact batch locations and link them to dispatch trucks.")
-
     col1, col2 = st.columns(2)
 
     with col1:
@@ -313,7 +283,6 @@ elif page == "Inventory & QR Tracking":
     st.markdown("---")
     st.subheader("Warehouse Inventory Database")
     st.dataframe(st.session_state['inventory'])
-    
     render_footer()
 
 # ==========================================
@@ -324,25 +293,19 @@ elif page == "GPS & Fleet Tracking":
     st.markdown("Real-time telemetry, dynamic traffic conditions, and ETA tracking for active fleets.")
     st.markdown("👉 **Click directly on a Truck ID row in the table to view its live route!**")
 
-    # Generate live telemetry data safely pulling from stabilized state
     fleet_data = []
     for d in st.session_state['fleet_state']:
         route_coords = real_routes[d["dest"]]
-        # Calculates curved movement along actual roads
         c_lat, c_lon = get_interpolated_pos(route_coords, d["progress"])
-        
         fleet_data.append({
             "Truck": d["id"], "Destination": d["dest"],
             "start_lat": route_coords[0][0], "start_lon": route_coords[0][1],
             "curr_lat": c_lat, "curr_lon": c_lon,
             "dest_lat": route_coords[-1][0], "dest_lon": route_coords[-1][1],
-            "speed": d["speed"], 
-            "Traffic Condition": d["traffic"],
-            "Route Color": d["color"],
-            "ETA": d["eta"]
+            "speed": d["speed"], "Traffic Condition": d["traffic"],
+            "Route Color": d["color"], "ETA": d["eta"]
         })
 
-    # SECURE TABLE SELECTION (Using Frozen Data)
     try:
         selection_event = st.dataframe(
             st.session_state['static_fleet_df'],
@@ -350,24 +313,19 @@ elif page == "GPS & Fleet Tracking":
             selection_mode="single-row",
             key="truck_selection_table" 
         )
-        selected_rows = selection_event.selection.rows
-        if selected_rows:
-            selected_truck = st.session_state['static_fleet_df'].iloc[selected_rows[0]]["Truck ID"]
+        if selection_event.selection.rows:
+            selected_truck = st.session_state['static_fleet_df'].iloc[selection_event.selection.rows[0]]["Truck ID"]
         else:
             selected_truck = "All Active Fleet"
-            
-    except Exception as e:
-        # Fallback safety net
+    except Exception:
         st.dataframe(st.session_state['static_fleet_df'])
-        selected_truck = st.selectbox("🎯 Target ID Focus (Select a truck to view route):", ["All Active Fleet"] + st.session_state['static_fleet_df']["Truck ID"].tolist())
+        selected_truck = st.selectbox("🎯 Target ID Focus:", ["All Active Fleet"] + st.session_state['static_fleet_df']["Truck ID"].tolist())
 
     st.markdown("---")
     
-    # NEW LIVE FOCUS PANEL
     if selected_truck != "All Active Fleet":
         live_data = next(item for item in fleet_data if item["Truck"] == selected_truck)
         st.subheader(f"📡 Focus Target: {selected_truck}")
-        
         col1, col2, col3, col4 = st.columns(4)
         col1.metric("Current Speed", f"{live_data['speed']} km/h")
         col2.metric("Traffic Route", live_data['Traffic Condition'])
@@ -378,79 +336,63 @@ elif page == "GPS & Fleet Tracking":
     
     fig = go.Figure()
     
-    # Filter map logic based on the table selection
-    if selected_truck == "All Active Fleet":
-        plot_data = fleet_data
-        map_zoom = 9
-        map_center = {"lat": 25.12, "lon": 55.20}
-    else:
-        plot_data = [d for d in fleet_data if d["Truck"] == selected_truck]
-        map_zoom = 11.5
-        map_center = {"lat": plot_data[0]["curr_lat"], "lon": plot_data[0]["curr_lon"]}
+    # THE FIX: Only force the map zoom/center if you click a NEW truck. 
+    # Otherwise, it stays exactly where you drag it!
+    map_layout = dict(style="carto-darkmatter")
+    if 'last_truck' not in st.session_state or st.session_state['last_truck'] != selected_truck:
+        st.session_state['last_truck'] = selected_truck
+        if selected_truck == "All Active Fleet":
+            map_layout['zoom'] = 9
+            map_layout['center'] = {"lat": 25.12, "lon": 55.20}
+        else:
+            plot_data_first = [d for d in fleet_data if d["Truck"] == selected_truck][0]
+            map_layout['zoom'] = 11.5
+            map_layout['center'] = {"lat": plot_data_first["curr_lat"], "lon": plot_data_first["curr_lon"]}
+
+    plot_data = fleet_data if selected_truck == "All Active Fleet" else [d for d in fleet_data if d["Truck"] == selected_truck]
     
     for d in plot_data:
         line_color = d['Route Color'] if selected_truck != "All Active Fleet" else 'rgba(255, 255, 255, 0.2)'
         route_coords = real_routes[d['Destination']]
         
-        # UPGRADED: Real Waypoint Route Line passing through ALL curves
         fig.add_trace(go.Scattermap(
             mode="lines",
-            lon=[p[1] for p in route_coords],
-            lat=[p[0] for p in route_coords],
-            line=dict(width=5, color=line_color),
-            hoverinfo='none'
+            lon=[p[1] for p in route_coords], lat=[p[0] for p in route_coords],
+            line=dict(width=5, color=line_color), hoverinfo='none'
         ))
         
-        # Origin & Destination Markers (Only show in Focus Mode)
         if selected_truck != "All Active Fleet":
-            # Departure Marker
             fig.add_trace(go.Scattermap(
                 mode="markers+text",
                 lon=[d['start_lon']], lat=[d['start_lat']],
                 marker=dict(size=14, color='white'),
-                text="Departure: StormNode Hub",
-                textposition="bottom center",
-                textfont=dict(color="white", size=14, weight="bold"),
-                name="Departure", hoverinfo='text'
+                text="Departure: StormNode Hub", textposition="bottom center",
+                textfont=dict(color="white", size=14, weight="bold"), name="Departure", hoverinfo='text'
             ))
-            # Arrival Marker
             fig.add_trace(go.Scattermap(
                 mode="markers+text",
                 lon=[d['dest_lon']], lat=[d['dest_lat']],
                 marker=dict(size=14, color='#00FF55'),
-                text=f"Arrival: {d['Destination']}",
-                textposition="top center",
-                textfont=dict(color="#00FF55", size=14, weight="bold"),
-                name="Arrival", hoverinfo='text'
+                text=f"Arrival: {d['Destination']}", textposition="top center",
+                textfont=dict(color="#00FF55", size=14, weight="bold"), name="Arrival", hoverinfo='text'
             ))
 
-        # Moving Truck Marker with Live ETA
         marker_text = f"<b>{d['Truck']}</b><br>Traffic: {d['Traffic Condition']}<br>Speed: {d['speed']} km/h<br>ETA: {d['ETA']}"
-        
         fig.add_trace(go.Scattermap(
             mode="markers",
-            lon=[d['curr_lon']],
-            lat=[d['curr_lat']],
+            lon=[d['curr_lon']], lat=[d['curr_lat']],
             marker=dict(size=18, color='#00D2FF'),
-            name=d['Truck'],
-            text=marker_text,
-            hoverinfo='text'
+            name=d['Truck'], text=marker_text, hoverinfo='text'
         ))
 
-    # UPGRADED: UI Revision locks the map so you can pan around without it refreshing!
     fig.update_layout(
+        map=map_layout,
         uirevision=selected_truck,
-        map=dict(
-            style="carto-darkmatter",
-            zoom=map_zoom,
-            center=map_center
-        ),
         margin={"r":0,"t":0,"l":0,"b":0},
         showlegend=False,
         height=550
     )
     st.plotly_chart(fig, use_container_width=True)
-    
     render_footer()
 
 # ==========================================
@@ -459,13 +401,9 @@ elif page == "GPS & Fleet Tracking":
 elif page == "About StormNode":
     st.title("⚡ About StormNode Logistics")
     st.markdown("### Powering the Connected Supply Chain")
-    
-    # Fixed Image
     st.image("https://images.unsplash.com/photo-1553413077-190dd305871c?auto=format&fit=crop&w=1200&q=80", caption="StormNode Next-Generation Fulfillment Center")
-    
     st.markdown("---")
     
-    # LIVE SYSTEM METRICS
     st.subheader("Global Operations At A Glance")
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("Daily Freight Volume", "4,850 Tons", "+12% this week")
@@ -474,34 +412,19 @@ elif page == "About StormNode":
     col4.metric("System Uptime", "99.999%", "Optimal")
     
     st.markdown("---")
-    
     st.markdown("""
     **StormNode Logistics** is a next-generation freight and warehousing platform designed to bridge the gap between heavy physical freight and cutting-edge digital infrastructure. 
     
     Founded in 2026, our mission is to completely eliminate supply chain opacity. Traditional logistics rely on manual data entry, fractured communication, and fragmented tracking systems. At StormNode, we treat every warehouse, dispatch truck, and cargo batch as a vital "node" in a highly connected, automated neural network.
     """)
     
-    # INTERACTIVE EXPANDERS FOR MORE INFO
     st.markdown("### Platform Capabilities")
-    
     with st.expander("🏭 Automated Dockyard Management", expanded=True):
-        st.write("""
-        Real-time sensor integration automates entry logs, dispatch clearances, and staging bay allocations. 
-        By utilizing edge-computing at the gates, we eliminate gatehouse bottlenecks, manual processing delays, and driver wait times. 
-        """)
-        
+        st.write("Real-time sensor integration automates entry logs, dispatch clearances, and staging bay allocations. By utilizing edge-computing at the gates, we eliminate gatehouse bottlenecks, manual processing delays, and driver wait times.")
     with st.expander("📦 Inventory & Granular QR Tracing"):
-        st.write("""
-        High-fidelity tracing ties exact physical bin locations to active transport routes. 
-        Our system ensures 100% chain-of-custody compliance from receipt at the dock to final delivery, reducing lost stock by 98%.
-        """)
-        
+        st.write("High-fidelity tracing ties exact physical bin locations to active transport routes. Our system ensures 100% chain-of-custody compliance from receipt at the dock to final delivery, reducing lost stock by 98%.")
     with st.expander("🛰️ Neural Routing & Telemetry"):
-        st.write("""
-        GPS fleet monitoring tracks transit progression dynamically over active satellite overlays. 
-        Machine learning algorithms adjust arrival ETAs for predictive warehouse receiving and optimize fuel routes around active traffic events.
-        """)
-        
+        st.write("GPS fleet monitoring tracks transit progression dynamically over active satellite overlays. Machine learning algorithms adjust arrival ETAs for predictive warehouse receiving and optimize fuel routes around active traffic events.")
     render_footer()
 
 # --- SIDEBAR ACADEMIC CREDITS ---
