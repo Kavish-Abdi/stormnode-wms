@@ -34,7 +34,7 @@ st.sidebar.markdown(
     unsafe_allow_html=True
 )
 
-# --- HELPER FUNCTIONS & ROUTING DATA ---
+# --- HELPER FUNCTIONS & HIGH-RES ROUTING DATA ---
 def render_footer():
     st.markdown("---")
     st.markdown(
@@ -45,17 +45,17 @@ def render_footer():
         unsafe_allow_html=True
     )
 
-# Realistic Highway Waypoints (Following Sheikh Zayed Road / E11 to avoid crossing the sea)
+# UPGRADED: High-resolution highway coordinates following E11 (Sheikh Zayed Road) to curve around the coast perfectly.
 real_routes = {
-    "DXB Airport": [[24.9857, 55.0273], [25.0210, 55.0750], [25.0850, 55.1520], [25.1510, 55.2280], [25.2220, 55.3050], [25.2532, 55.3657]],
-    "Dubai Mall": [[24.9857, 55.0273], [25.0210, 55.0750], [25.0850, 55.1520], [25.1450, 55.2200], [25.1972, 55.2744]],
-    "Dubai Marina": [[24.9857, 55.0273], [25.0150, 55.0650], [25.0450, 55.1050], [25.0805, 55.1403]],
-    "Al Maktoum Int": [[24.9857, 55.0273], [24.9600, 55.0600], [24.9300, 55.1000], [24.8966, 55.1605]],
-    "Sharjah Ind": [[24.9857, 55.0273], [25.0500, 55.1100], [25.1200, 55.1900], [25.2000, 55.2800], [25.2600, 55.3500], [25.3134, 55.4055]]
+    "DXB Airport": [[24.9857, 55.0273], [25.0113, 55.0552], [25.0441, 55.0963], [25.0763, 55.1388], [25.1166, 55.1884], [25.1557, 55.2343], [25.1955, 55.2755], [25.2415, 55.3211], [25.2532, 55.3657]],
+    "Dubai Mall": [[24.9857, 55.0273], [25.0113, 55.0552], [25.0441, 55.0963], [25.0763, 55.1388], [25.1166, 55.1884], [25.1557, 55.2343], [25.1972, 55.2744]],
+    "Dubai Marina": [[24.9857, 55.0273], [25.0113, 55.0552], [25.0441, 55.0963], [25.0805, 55.1403]],
+    "Al Maktoum Int": [[24.9857, 55.0273], [24.9600, 55.0500], [24.9350, 55.1100], [24.8966, 55.1605]],
+    "Sharjah Ind": [[24.9857, 55.0273], [25.0113, 55.0552], [25.0441, 55.0963], [25.1166, 55.1884], [25.1955, 55.2755], [25.2415, 55.3211], [25.2850, 55.3650], [25.3134, 55.4055]]
 }
 
 def get_interpolated_pos(route, progress):
-    """Calculates the exact position of the truck smoothly along a multi-point road"""
+    """Calculates the exact position of the truck smoothly along a curved multi-point road"""
     if progress >= 1.0:
         return route[-1][0], route[-1][1]
     if progress <= 0.0:
@@ -73,8 +73,8 @@ def get_interpolated_pos(route, progress):
     curr_lon = lon1 + (lon2 - lon1) * frac
     return curr_lat, curr_lon
 
-# --- GLOBAL AUTOREFRESH (Set to 3 seconds for Live Radar Movement!) ---
-st_autorefresh(interval=3000, limit=10000, key="global_autorefresh")
+# --- GLOBAL AUTOREFRESH (Smoothed out to 5 seconds to prevent aggressive flickering) ---
+st_autorefresh(interval=5000, limit=10000, key="global_autorefresh")
 
 if 'trigger_sound' not in st.session_state:
     st.session_state['trigger_sound'] = None
@@ -147,7 +147,7 @@ page = st.sidebar.radio("Main Menu", [
 # --- GLOBAL BACKGROUND EVENT SIMULATOR ---
 now = datetime.now()
 
-# 1. LIVE RADAR UPDATES (Runs every 3 seconds to move trucks smoothly)
+# 1. LIVE RADAR UPDATES
 for t in st.session_state['fleet_state']:
     t['progress'] += random.uniform(0.002, 0.006)
     if t['progress'] >= 1.0:
@@ -157,7 +157,7 @@ for t in st.session_state['fleet_state']:
     minutes_left = int((1.0 - t['progress']) * 180)
     t['eta'] = (now + timedelta(minutes=minutes_left)).strftime("%I:%M %p") if t['progress'] <= 0.95 else "Arriving"
 
-# 2. DOCKYARD AUTOMATION (Only triggers if 58+ seconds have passed)
+# 2. DOCKYARD AUTOMATION
 if (now - st.session_state['last_auto_update']).total_seconds() >= 58:  
     st.session_state['last_auto_update'] = now
     
@@ -346,7 +346,7 @@ elif page == "GPS & Fleet Tracking":
             st.session_state['static_fleet_df'],
             on_select="rerun",
             selection_mode="single-row",
-            key="truck_selection_table"  # This key freezes the click permanently
+            key="truck_selection_table" 
         )
         selected_rows = selection_event.selection.rows
         if selected_rows:
@@ -361,7 +361,7 @@ elif page == "GPS & Fleet Tracking":
 
     st.markdown("---")
     
-    # NEW LIVE FOCUS PANEL (Replaces the columns we pulled out of the table)
+    # NEW LIVE FOCUS PANEL
     if selected_truck != "All Active Fleet":
         live_data = next(item for item in fleet_data if item["Truck"] == selected_truck)
         st.subheader(f"📡 Focus Target: {selected_truck}")
@@ -435,13 +435,15 @@ elif page == "GPS & Fleet Tracking":
             hoverinfo='text'
         ))
 
+    # UPGRADED: Added `uirevision` to lock the camera! It will only reset if you select a new truck.
     fig.update_layout(
         map_style="carto-darkmatter",
         map_zoom=map_zoom,
         map_center=map_center,
         margin={"r":0,"t":0,"l":0,"b":0},
         showlegend=False,
-        height=550
+        height=550,
+        uirevision=selected_truck 
     )
     st.plotly_chart(fig)
     
