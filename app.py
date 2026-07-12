@@ -51,14 +51,15 @@ st_autorefresh(interval=60000, limit=1000, key="global_autorefresh")
 if 'trigger_sound' not in st.session_state:
     st.session_state['trigger_sound'] = None
 
-# Fleet Progress & Traffic State 
+# Fleet Progress & Traffic State - Locked attributes prevent selection drops!
+now_init = datetime.now()
 if 'fleet_state' not in st.session_state:
     st.session_state['fleet_state'] = [
-        {"id": "TRK-901", "dest": "DXB Airport", "d_lat": 25.2532, "d_lon": 55.3657, "progress": 0.15, "traffic": "Moderate", "color": "#FFBF00"},
-        {"id": "TRK-902", "dest": "Dubai Mall", "d_lat": 25.1972, "d_lon": 55.2744, "progress": 0.40, "traffic": "Heavy Traffic", "color": "#FF3333"},
-        {"id": "TRK-903", "dest": "Dubai Marina", "d_lat": 25.0805, "d_lon": 55.1403, "progress": 0.65, "traffic": "Clear", "color": "#00FF55"},
-        {"id": "TRK-904", "dest": "Al Maktoum Int", "d_lat": 24.8966, "d_lon": 55.1605, "progress": 0.20, "traffic": "Clear", "color": "#00FF55"},
-        {"id": "TRK-905", "dest": "Sharjah Ind", "d_lat": 25.3134, "d_lon": 55.4055, "progress": 0.80, "traffic": "Moderate", "color": "#FFBF00"}
+        {"id": "TRK-901", "dest": "DXB Airport", "d_lat": 25.2532, "d_lon": 55.3657, "progress": 0.15, "traffic": "Moderate", "color": "#FFBF00", "speed": 62, "eta": (now_init + timedelta(minutes=int(0.85*180))).strftime("%I:%M %p")},
+        {"id": "TRK-902", "dest": "Dubai Mall", "d_lat": 25.1972, "d_lon": 55.2744, "progress": 0.40, "traffic": "Heavy Traffic", "color": "#FF3333", "speed": 45, "eta": (now_init + timedelta(minutes=int(0.60*180))).strftime("%I:%M %p")},
+        {"id": "TRK-903", "dest": "Dubai Marina", "d_lat": 25.0805, "d_lon": 55.1403, "progress": 0.65, "traffic": "Clear", "color": "#00FF55", "speed": 85, "eta": (now_init + timedelta(minutes=int(0.35*180))).strftime("%I:%M %p")},
+        {"id": "TRK-904", "dest": "Al Maktoum Int", "d_lat": 24.8966, "d_lon": 55.1605, "progress": 0.20, "traffic": "Clear", "color": "#00FF55", "speed": 78, "eta": (now_init + timedelta(minutes=int(0.80*180))).strftime("%I:%M %p")},
+        {"id": "TRK-905", "dest": "Sharjah Ind", "d_lat": 25.3134, "d_lon": 55.4055, "progress": 0.80, "traffic": "Moderate", "color": "#FFBF00", "speed": 55, "eta": (now_init + timedelta(minutes=int(0.20*180))).strftime("%I:%M %p")}
     ]
 
 if 'truck_logs' not in st.session_state:
@@ -110,11 +111,15 @@ now = datetime.now()
 if (now - st.session_state['last_auto_update']).total_seconds() >= 58:  
     st.session_state['last_auto_update'] = now
     
-    # Progress the active fleet along their routes
+    # Progress the active fleet along their routes and update locked stats safely
     for t in st.session_state['fleet_state']:
         t['progress'] += random.uniform(0.02, 0.08)
         if t['progress'] >= 1.0:
             t['progress'] = 0.05  # Loop back for presentation continuity
+            
+        t['speed'] = random.randint(45, 90)
+        minutes_left = int((1.0 - t['progress']) * 180)
+        t['eta'] = (now + timedelta(minutes=minutes_left)).strftime("%I:%M %p") if t['progress'] <= 0.95 else "Arriving"
             
     # Dockyard Automation
     locations = ["Whse A - Dock 1", "Whse A - Dock 2", "Whse B - Dock 1", "Whse C - Heavy Freight"]
@@ -281,37 +286,31 @@ elif page == "GPS & Fleet Tracking":
 
     hub_lat, hub_lon = 24.9857, 55.0273
     
-    # Generate live telemetry data from session state
+    # Generate live telemetry data safely pulling from stabilized state
     fleet_data = []
     for d in st.session_state['fleet_state']:
         c_lat = float(hub_lat + (d["d_lat"] - hub_lat) * d["progress"])
         c_lon = float(hub_lon + (d["d_lon"] - hub_lon) * d["progress"])
-        
-        # ETA Calculation based on remaining distance
-        remaining_progress = 1.0 - d["progress"]
-        minutes_left = int(remaining_progress * 180) # Assume max 3 hour trip
-        eta_time = (datetime.now() + timedelta(minutes=minutes_left)).strftime("%I:%M %p")
         
         fleet_data.append({
             "Truck": d["id"], "Destination": d["dest"],
             "start_lat": hub_lat, "start_lon": hub_lon,
             "curr_lat": c_lat, "curr_lon": c_lon,
             "dest_lat": d["d_lat"], "dest_lon": d["d_lon"],
-            "speed": random.randint(45, 90), 
+            "speed": d["speed"], 
             "Traffic Condition": d["traffic"],
             "Route Color": d["color"],
-            "ETA": "Arriving" if d["progress"] > 0.95 else eta_time
+            "ETA": d["eta"]
         })
     df_fleet = pd.DataFrame(fleet_data)
 
-    # 1. ATTEMPT TO USE STREAMLIT'S NEW CLICKABLE DATAFRAME
+    # SECURE TABLE SELECTION
     try:
         selection_event = st.dataframe(
             df_fleet[["Truck", "Destination", "speed", "Traffic Condition", "ETA"]],
             on_select="rerun",
             selection_mode="single-row"
         )
-        # Check if user clicked a row
         selected_rows = selection_event.selection.rows
         if selected_rows:
             selected_truck = df_fleet.iloc[selected_rows[0]]["Truck"]
@@ -319,7 +318,7 @@ elif page == "GPS & Fleet Tracking":
             selected_truck = "All Active Fleet"
             
     except Exception as e:
-        # Fallback safety net just in case the server environment drops the selection feature
+        # Fallback safety net
         st.dataframe(df_fleet[["Truck", "Destination", "speed", "Traffic Condition", "ETA"]])
         selected_truck = st.selectbox("🎯 Target ID Focus (Select a truck to view route):", ["All Active Fleet"] + df_fleet["Truck"].tolist())
 
