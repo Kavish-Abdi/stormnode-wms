@@ -51,14 +51,14 @@ st_autorefresh(interval=60000, limit=1000, key="global_autorefresh")
 if 'trigger_sound' not in st.session_state:
     st.session_state['trigger_sound'] = None
 
-# Fleet Progress State (Allows trucks to move smoothly forward)
+# Fleet Progress & Traffic State 
 if 'fleet_state' not in st.session_state:
     st.session_state['fleet_state'] = [
-        {"id": "TRK-901", "dest": "DXB Airport", "d_lat": 25.2532, "d_lon": 55.3657, "progress": 0.15},
-        {"id": "TRK-902", "dest": "Dubai Mall", "d_lat": 25.1972, "d_lon": 55.2744, "progress": 0.40},
-        {"id": "TRK-903", "dest": "Dubai Marina", "d_lat": 25.0805, "d_lon": 55.1403, "progress": 0.65},
-        {"id": "TRK-904", "dest": "Al Maktoum Int", "d_lat": 24.8966, "d_lon": 55.1605, "progress": 0.20},
-        {"id": "TRK-905", "dest": "Sharjah Ind", "d_lat": 25.3134, "d_lon": 55.4055, "progress": 0.80}
+        {"id": "TRK-901", "dest": "DXB Airport", "d_lat": 25.2532, "d_lon": 55.3657, "progress": 0.15, "traffic": "Moderate", "color": "#FFBF00"},
+        {"id": "TRK-902", "dest": "Dubai Mall", "d_lat": 25.1972, "d_lon": 55.2744, "progress": 0.40, "traffic": "Heavy Traffic", "color": "#FF3333"},
+        {"id": "TRK-903", "dest": "Dubai Marina", "d_lat": 25.0805, "d_lon": 55.1403, "progress": 0.65, "traffic": "Clear", "color": "#00FF55"},
+        {"id": "TRK-904", "dest": "Al Maktoum Int", "d_lat": 24.8966, "d_lon": 55.1605, "progress": 0.20, "traffic": "Clear", "color": "#00FF55"},
+        {"id": "TRK-905", "dest": "Sharjah Ind", "d_lat": 25.3134, "d_lon": 55.4055, "progress": 0.80, "traffic": "Moderate", "color": "#FFBF00"}
     ]
 
 if 'truck_logs' not in st.session_state:
@@ -276,7 +276,8 @@ elif page == "Inventory & QR Tracking":
 # ==========================================
 elif page == "GPS & Fleet Tracking":
     st.title("🛰️ Live GPS & Route Tracing")
-    st.markdown("Real-time telemetry and dynamic routing for active fleets.")
+    st.markdown("Real-time telemetry, dynamic traffic conditions, and ETA tracking for active fleets.")
+    st.markdown("👉 **Click directly on a Truck ID row in the table to view its live route!**")
 
     hub_lat, hub_lon = 24.9857, 55.0273
     
@@ -285,28 +286,49 @@ elif page == "GPS & Fleet Tracking":
     for d in st.session_state['fleet_state']:
         c_lat = float(hub_lat + (d["d_lat"] - hub_lat) * d["progress"])
         c_lon = float(hub_lon + (d["d_lon"] - hub_lon) * d["progress"])
+        
+        # ETA Calculation based on remaining distance
+        remaining_progress = 1.0 - d["progress"]
+        minutes_left = int(remaining_progress * 180) # Assume max 3 hour trip
+        eta_time = (datetime.now() + timedelta(minutes=minutes_left)).strftime("%I:%M %p")
+        
         fleet_data.append({
             "Truck": d["id"], "Destination": d["dest"],
             "start_lat": hub_lat, "start_lon": hub_lon,
             "curr_lat": c_lat, "curr_lon": c_lon,
             "dest_lat": d["d_lat"], "dest_lon": d["d_lon"],
             "speed": random.randint(45, 90), 
-            "status": "🟢 Arriving" if d["progress"] > 0.9 else random.choice(["🟢 Clear", "🟡 Moderate"])
+            "Traffic Condition": d["traffic"],
+            "Route Color": d["color"],
+            "ETA": "Arriving" if d["progress"] > 0.95 else eta_time
         })
     df_fleet = pd.DataFrame(fleet_data)
 
-    # REVERTED LAYOUT: Table on top, Map on bottom
-    st.dataframe(df_fleet[["Truck", "Destination", "speed", "status"]])
+    # 1. ATTEMPT TO USE STREAMLIT'S NEW CLICKABLE DATAFRAME
+    try:
+        selection_event = st.dataframe(
+            df_fleet[["Truck", "Destination", "speed", "Traffic Condition", "ETA"]],
+            on_select="rerun",
+            selection_mode="single-row"
+        )
+        # Check if user clicked a row
+        selected_rows = selection_event.selection.rows
+        if selected_rows:
+            selected_truck = df_fleet.iloc[selected_rows[0]]["Truck"]
+        else:
+            selected_truck = "All Active Fleet"
+            
+    except Exception as e:
+        # Fallback safety net just in case the server environment drops the selection feature
+        st.dataframe(df_fleet[["Truck", "Destination", "speed", "Traffic Condition", "ETA"]])
+        selected_truck = st.selectbox("🎯 Target ID Focus (Select a truck to view route):", ["All Active Fleet"] + df_fleet["Truck"].tolist())
 
     st.markdown("---")
-    st.subheader("📡 Interactive Satellite Telemetry")
-    
-    # Dropdown to isolate specific trucks
-    selected_truck = st.selectbox("🎯 Target ID Focus (Select a truck to view route):", ["All Active Fleet"] + df_fleet["Truck"].tolist())
+    st.subheader(f"📡 Satellite Telemetry: {selected_truck}")
     
     fig = go.Figure()
     
-    # Filter map logic based on the dropdown selection
+    # Filter map logic based on the table selection
     if selected_truck == "All Active Fleet":
         plot_data = fleet_data
         map_zoom = 9
@@ -317,38 +339,50 @@ elif page == "GPS & Fleet Tracking":
         map_center = {"lat": plot_data[0]["curr_lat"], "lon": plot_data[0]["curr_lon"]}
     
     for d in plot_data:
-        # High-Visibility Route Line
+        # Route Line - Colors change based on traffic condition!
+        line_color = d['Route Color'] if selected_truck != "All Active Fleet" else 'rgba(255, 255, 255, 0.2)'
+        
         fig.add_trace(go.Scattermap(
             mode="lines",
             lon=[d['start_lon'], d['curr_lon'], d['dest_lon']],
             lat=[d['start_lat'], d['curr_lat'], d['dest_lat']],
-            line=dict(width=3, color='#00D2FF' if selected_truck != "All Active Fleet" else 'rgba(255, 255, 255, 0.2)'),
+            line=dict(width=4, color=line_color),
             hoverinfo='none'
         ))
         
         # Origin & Destination Markers (Only show in Focus Mode)
         if selected_truck != "All Active Fleet":
+            # Departure Marker
             fig.add_trace(go.Scattermap(
-                mode="markers",
+                mode="markers+text",
                 lon=[d['start_lon']], lat=[d['start_lat']],
-                marker=dict(size=12, color='white'),
-                name="Origin", text="StormNode Hub Bay", hoverinfo='text'
+                marker=dict(size=14, color='white'),
+                text="Departure: StormNode Hub",
+                textposition="bottom center",
+                textfont=dict(color="white", size=14, weight="bold"),
+                name="Departure", hoverinfo='text'
             ))
+            # Arrival Marker
             fig.add_trace(go.Scattermap(
-                mode="markers",
+                mode="markers+text",
                 lon=[d['dest_lon']], lat=[d['dest_lat']],
-                marker=dict(size=12, color='#00FF55'),
-                name="Destination", text=f"Target: {d['Destination']}", hoverinfo='text'
+                marker=dict(size=14, color='#00FF55'),
+                text=f"Arrival: {d['Destination']}",
+                textposition="top center",
+                textfont=dict(color="#00FF55", size=14, weight="bold"),
+                name="Arrival", hoverinfo='text'
             ))
 
-        # Moving Truck Marker
+        # Moving Truck Marker with Live ETA
+        marker_text = f"<b>{d['Truck']}</b><br>Traffic: {d['Traffic Condition']}<br>Speed: {d['speed']} km/h<br>ETA: {d['ETA']}"
+        
         fig.add_trace(go.Scattermap(
             mode="markers",
             lon=[d['curr_lon']],
             lat=[d['curr_lat']],
-            marker=dict(size=16, color='#00D2FF'),
+            marker=dict(size=18, color='#00D2FF'),
             name=d['Truck'],
-            text=f"<b>{d['Truck']}</b><br>Speed: {d['speed']} km/h<br>Heading to: {d['Destination']}",
+            text=marker_text,
             hoverinfo='text'
         ))
 
@@ -371,7 +405,7 @@ elif page == "About StormNode":
     st.title("⚡ About StormNode Logistics")
     st.markdown("### Powering the Connected Supply Chain")
     
-    # Using a highly reliable static image URL
+    # Fixed Image
     st.image("https://images.unsplash.com/photo-1553413077-190dd305871c?auto=format&fit=crop&w=1200&q=80", caption="StormNode Next-Generation Fulfillment Center")
     
     st.markdown("---")
