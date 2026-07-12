@@ -221,17 +221,45 @@ if page == "Dockyard Management":
     st.title("🚛 Dockyard Management")
     st.markdown("Automated gate sensors and real-time dispatch control.")
     
-    # NEW FEATURE: Computer Vision CCTV Scanner
-    st.markdown("""
+    df = st.session_state['truck_logs']
+    
+    # --- FUNCTIONAL CCTV LOGIC ---
+    # Find the most recently updated log entry
+    latest_update = df.sort_values(by="Last_Updated", ascending=False).iloc[0]
+    time_since_update = (now - datetime.strptime(latest_update['Last_Updated'], "%Y-%m-%d %H:%M:%S")).total_seconds()
+    
+    if time_since_update < 15:
+        # Active Scan Notification
+        if latest_update['Status'] == "At Dock":
+            msg = f"ENTRY SCANNED: {latest_update['Truck_ID']} | ALLOCATED TO: {latest_update['Warehouse_Location']}"
+            b_color = "#00FF55" # Green
+        else:
+            msg = f"EXIT SCANNED: {latest_update['Truck_ID']} | DISPATCH CLEARED & ROUTED"
+            b_color = "#FF3333" # Red
+            
+        scanner_html = f"""
+        <div style="position: relative; width: 100%; height: 60px; background: #1A2235; 
+             border: 2px solid {b_color}; border-radius: 5px; overflow: hidden;
+             display: flex; align-items: center; justify-content: center; color: {b_color};
+             font-family: monospace; font-size: 16px; font-weight: bold; letter-spacing: 1px;
+             box-shadow: 0 0 15px {b_color}40;">
+            [LIVE FEED] ⚡ {msg} ⚡
+        </div>
+        <br>
+        """
+    else:
+        # Idle Scanning Animation
+        scanner_html = """
         <div class="scanner-box">
-            <span>[AI VISION ON] ⚡ SCANNING INCOMING TRAFFIC ⚡ MATCHING PLATES...</span>
+            <span>[AI VISION ON] ⚡ SCANNING PERIMETER ⚡ AWAITING NEXT VEHICLE...</span>
             <div class="scanner-laser"></div>
         </div>
         <br>
-    """, unsafe_allow_html=True)
-    
-    df = st.session_state['truck_logs']
-    
+        """
+        
+    st.markdown(scanner_html, unsafe_allow_html=True)
+    # --- END FUNCTIONAL CCTV LOGIC ---
+
     css_animations = f"""
     {audio_tag}
     <style>
@@ -328,16 +356,12 @@ elif page == "Inventory & QR Tracking":
                         st.rerun()
 
     st.markdown("---")
-    
-    # NEW FEATURE: Live Warehouse Density Heatmap
     st.subheader("📊 Live Warehouse Density Heatmap")
     st.markdown("Visual AI grouping of current stock density across storage wings.")
     
-    # Calculate stock distribution
     current_stock = st.session_state['inventory'][st.session_state['inventory']["Status"] == "In Warehouse"]
     wing_counts = {"North Wing": 0, "South Wing": 0, "East Wing": 0, "West Wing": 0}
     for wing in current_stock['Warehouse_Side']: wing_counts[wing] += 1
-    
     heatmap_df = pd.DataFrame(list(wing_counts.items()), columns=["Warehouse Wing", "Stock Count"])
     
     fig_heat = px.treemap(heatmap_df, path=['Warehouse Wing'], values='Stock Count', 
@@ -358,18 +382,14 @@ elif page == "GPS & Fleet Tracking":
     st.markdown("Real-time telemetry, dynamic traffic conditions, and ETA tracking for active fleets.")
     st.markdown("👉 **Click directly on a Truck ID row in the table to view its live route!**")
 
-    # NEW FEATURE: Weather Disruption Banner
     st.warning("⚠️ **AI WEATHER ALERT:** Severe Sandstorm Detected near E11 Highway (Sharjah Boundary). Adjusting ETA predictions dynamically.", icon="🌪️")
 
     fleet_data = []
     for d in st.session_state['fleet_state']:
         route_coords = real_routes[d["dest"]]
         c_lat, c_lon = get_interpolated_pos(route_coords, d["progress"])
-        
-        # NEW FEATURE: ESG Math Calculations
-        fuel_burn = round((d["progress"] * 100) * 0.35, 1) # ~35L per 100km
-        co2_emissions = round(fuel_burn * 2.68, 1) # 2.68kg CO2 per Liter of diesel
-        
+        fuel_burn = round((d["progress"] * 100) * 0.35, 1)
+        co2_emissions = round(fuel_burn * 2.68, 1) 
         fleet_data.append({
             "Truck": d["id"], "Destination": d["dest"],
             "start_lat": route_coords[0][0], "start_lon": route_coords[0][1],
@@ -397,7 +417,6 @@ elif page == "GPS & Fleet Tracking":
 
     st.markdown("---")
     
-    # NEW FEATURE: ESG Integrated Focus Panel
     if selected_truck != "All Active Fleet":
         live_data = next(item for item in fleet_data if item["Truck"] == selected_truck)
         st.subheader(f"📡 Focus Target: {selected_truck} | ESG Telemetry Active")
@@ -419,10 +438,8 @@ elif page == "GPS & Fleet Tracking":
     map_layout = dict(style="carto-darkmatter", zoom=map_zoom, center=map_center)
     fig = go.Figure()
     
-    # NEW FEATURE: Sandstorm Weather Anomaly Zone on Map
     fig.add_trace(go.Scattermap(
-        mode="markers",
-        lon=[55.33], lat=[25.26], # Sharjah/DXB Border
+        mode="markers", lon=[55.33], lat=[25.26], 
         marker=dict(size=80, color='rgba(255, 140, 0, 0.3)'),
         name="Anomaly", text="⚠️ Severe Sandstorm Zone", hoverinfo='text'
     ))
@@ -432,8 +449,7 @@ elif page == "GPS & Fleet Tracking":
         route_coords = real_routes[d['Destination']]
         
         fig.add_trace(go.Scattermap(
-            mode="lines",
-            lon=[p[1] for p in route_coords], lat=[p[0] for p in route_coords],
+            mode="lines", lon=[p[1] for p in route_coords], lat=[p[0] for p in route_coords],
             line=dict(width=5, color=line_color), hoverinfo='none'
         ))
         
@@ -456,11 +472,8 @@ elif page == "GPS & Fleet Tracking":
         ))
 
     fig.update_layout(
-        map=map_layout,
-        uirevision=selected_truck,
-        margin={"r":0,"t":0,"l":0,"b":0},
-        showlegend=False,
-        height=550
+        map=map_layout, uirevision=selected_truck, margin={"r":0,"t":0,"l":0,"b":0},
+        showlegend=False, height=550
     )
     st.plotly_chart(fig, use_container_width=True)
     render_footer()
@@ -474,9 +487,7 @@ elif page == "About StormNode":
     st.image("https://images.unsplash.com/photo-1553413077-190dd305871c?auto=format&fit=crop&w=1200&q=80", caption="StormNode Next-Generation Fulfillment Center")
     st.markdown("---")
     
-    # NEW FEATURE: UI Glow-Up with Plotly Gauges
     st.subheader("Global Operations At A Glance")
-    
     col1, col2 = st.columns(2)
     with col1:
         fig_eff = go.Figure(go.Indicator(
