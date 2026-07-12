@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 import random
 import time
 import plotly.graph_objects as go
+import plotly.express as px
 from streamlit_autorefresh import st_autorefresh
 
 # --- PAGE CONFIGURATION & LOGO ---
@@ -14,14 +15,42 @@ try:
 except:
     st.sidebar.title("⚡")
 
-# --- GLOBAL STYLES & CUSTOM BRANDING ---
+# --- GLOBAL STYLES & UI GLOW-UP ---
 st.markdown("""
     <style>
+    /* Toast Positioning */
     div[data-testid="stToastContainer"] {
         top: 2rem;
         right: 2rem;
         bottom: auto !important;
         left: auto !important;
+    }
+    /* Pulsing Status Orb */
+    .pulse-orb {
+        height: 12px; width: 12px; background-color: #00FF55; border-radius: 50%;
+        display: inline-block; margin-right: 8px; box-shadow: 0 0 10px #00FF55;
+        animation: pulse-animation 1.5s infinite;
+    }
+    @keyframes pulse-animation {
+        0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 255, 85, 0.7); }
+        70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(0, 255, 85, 0); }
+        100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 255, 85, 0); }
+    }
+    /* AI Gate Scanner CSS */
+    .scanner-box {
+        position: relative; width: 100%; height: 60px; background: #1A2235; 
+        border: 1px solid #00D2FF; border-radius: 5px; overflow: hidden;
+        display: flex; align-items: center; justify-content: center; color: #00D2FF;
+        font-family: monospace; font-weight: bold; letter-spacing: 2px;
+    }
+    .scanner-laser {
+        position: absolute; left: -100%; top: 0; width: 50%; height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(0, 210, 255, 0.4), transparent);
+        animation: scan 3s infinite linear;
+    }
+    @keyframes scan {
+        0% { left: -50%; }
+        100% { left: 100%; }
     }
     </style>
 """, unsafe_allow_html=True)
@@ -33,6 +62,8 @@ st.sidebar.markdown(
     "</div>",
     unsafe_allow_html=True
 )
+
+st.sidebar.markdown("<br><div style='display:flex; align-items:center; justify-content:center; font-family:monospace; color:#C5C6C7;'><div class='pulse-orb'></div> System Online | AI Active</div><br>", unsafe_allow_html=True)
 
 # --- HELPER FUNCTIONS & HIGH-RES ROUTING DATA ---
 def render_footer():
@@ -54,28 +85,20 @@ real_routes = {
 }
 
 def get_interpolated_pos(route, progress):
-    if progress >= 1.0:
-        return route[-1][0], route[-1][1]
-    if progress <= 0.0:
-        return route[0][0], route[0][1]
-    
+    if progress >= 1.0: return route[-1][0], route[-1][1]
+    if progress <= 0.0: return route[0][0], route[0][1]
     total_segments = len(route) - 1
     cont_index = progress * total_segments
     idx = int(cont_index)
     frac = cont_index - idx
-    
     lat1, lon1 = route[idx]
     lat2, lon2 = route[idx+1]
-    
-    curr_lat = lat1 + (lat2 - lat1) * frac
-    curr_lon = lon1 + (lon2 - lon1) * frac
-    return curr_lat, curr_lon
+    return lat1 + (lat2 - lat1) * frac, lon1 + (lon2 - lon1) * frac
 
 # --- GLOBAL AUTOREFRESH ---
 st_autorefresh(interval=5000, limit=10000, key="global_autorefresh")
 
-if 'trigger_sound' not in st.session_state:
-    st.session_state['trigger_sound'] = None
+if 'trigger_sound' not in st.session_state: st.session_state['trigger_sound'] = None
 
 if 'static_fleet_df' not in st.session_state:
     st.session_state['static_fleet_df'] = pd.DataFrame([
@@ -145,9 +168,7 @@ now = datetime.now()
 
 for t in st.session_state['fleet_state']:
     t['progress'] += random.uniform(0.002, 0.006)
-    if t['progress'] >= 1.0:
-        t['progress'] = 0.05  
-        
+    if t['progress'] >= 1.0: t['progress'] = 0.05  
     t['speed'] = random.randint(45, 90)
     minutes_left = int((1.0 - t['progress']) * 180)
     t['eta'] = (now + timedelta(minutes=minutes_left)).strftime("%I:%M %p") if t['progress'] <= 0.95 else "Arriving"
@@ -167,7 +188,7 @@ if (now - st.session_state['last_auto_update']).total_seconds() >= 58:
         st.session_state['auto_toggle'] = "exit"
         st.session_state['trigger_sound'] = "entry"
         if page != "Dockyard Management":
-            st.toast(f"📡 Fleet Update: {auto_truck_id} has arrived at the dock.", icon="🟢")
+            st.toast(f"📡 Computer Vision: {auto_truck_id} plate scanned at main gate.", icon="🟢")
     else:
         docked = st.session_state['truck_logs'][st.session_state['truck_logs']["Status"] == "At Dock"]
         if not docked.empty:
@@ -179,7 +200,7 @@ if (now - st.session_state['last_auto_update']).total_seconds() >= 58:
         st.session_state['auto_toggle'] = "entry"
         st.session_state['trigger_sound'] = "exit"
         if page != "Dockyard Management":
-            st.toast(f"📡 Fleet Update: {t_id} was safely dispatched.", icon="🔴")
+            st.toast(f"📡 Fleet Update: {t_id} departed.", icon="🔴")
 
 audio_tag = ""
 if st.session_state['trigger_sound'] == "entry":
@@ -199,6 +220,16 @@ if page != "Dockyard Management" and audio_tag:
 if page == "Dockyard Management":
     st.title("🚛 Dockyard Management")
     st.markdown("Automated gate sensors and real-time dispatch control.")
+    
+    # NEW FEATURE: Computer Vision CCTV Scanner
+    st.markdown("""
+        <div class="scanner-box">
+            <span>[AI VISION ON] ⚡ SCANNING INCOMING TRAFFIC ⚡ MATCHING PLATES...</span>
+            <div class="scanner-laser"></div>
+        </div>
+        <br>
+    """, unsafe_allow_html=True)
+    
     df = st.session_state['truck_logs']
     
     css_animations = f"""
@@ -214,7 +245,6 @@ if page == "Dockyard Management":
     </style>
     """
     
-    st.markdown("---")
     st.subheader("🟢 Active Fleet (At Dock)")
     html_docked = f"{css_animations}<table class='custom-table'><thead><tr><th>Truck ID</th><th>Entry Time</th><th>Exit Time</th><th>Location</th><th>Status</th></tr></thead><tbody>"
     for _, row in df[df["Status"] == "At Dock"].iterrows():
@@ -272,14 +302,12 @@ elif page == "Inventory & QR Tracking":
         
         if in_stock:
             dispatch_qr = st.selectbox("Select Batch QR", ["Select"] + in_stock)
-            
             if available_trucks:
                 st.info(f"🚚 Trucks Available at Dock: **{', '.join(available_trucks)}**")
             else:
                 st.warning("⚠️ No trucks are currently parked at the dock.")
                 
             dispatch_truck = st.text_input("Assign to Truck ID")
-            
             if st.button("Dispatch"):
                 if dispatch_qr != "Select" and dispatch_truck:
                     if dispatch_truck not in available_trucks:
@@ -300,6 +328,24 @@ elif page == "Inventory & QR Tracking":
                         st.rerun()
 
     st.markdown("---")
+    
+    # NEW FEATURE: Live Warehouse Density Heatmap
+    st.subheader("📊 Live Warehouse Density Heatmap")
+    st.markdown("Visual AI grouping of current stock density across storage wings.")
+    
+    # Calculate stock distribution
+    current_stock = st.session_state['inventory'][st.session_state['inventory']["Status"] == "In Warehouse"]
+    wing_counts = {"North Wing": 0, "South Wing": 0, "East Wing": 0, "West Wing": 0}
+    for wing in current_stock['Warehouse_Side']: wing_counts[wing] += 1
+    
+    heatmap_df = pd.DataFrame(list(wing_counts.items()), columns=["Warehouse Wing", "Stock Count"])
+    
+    fig_heat = px.treemap(heatmap_df, path=['Warehouse Wing'], values='Stock Count', 
+                          color='Stock Count', color_continuous_scale='Tealgrn')
+    fig_heat.update_layout(margin=dict(t=10, l=10, r=10, b=10), paper_bgcolor="rgba(0,0,0,0)", height=300)
+    st.plotly_chart(fig_heat, use_container_width=True)
+
+    st.markdown("---")
     st.subheader("Warehouse Inventory Database")
     st.dataframe(st.session_state['inventory'])
     render_footer()
@@ -312,17 +358,26 @@ elif page == "GPS & Fleet Tracking":
     st.markdown("Real-time telemetry, dynamic traffic conditions, and ETA tracking for active fleets.")
     st.markdown("👉 **Click directly on a Truck ID row in the table to view its live route!**")
 
+    # NEW FEATURE: Weather Disruption Banner
+    st.warning("⚠️ **AI WEATHER ALERT:** Severe Sandstorm Detected near E11 Highway (Sharjah Boundary). Adjusting ETA predictions dynamically.", icon="🌪️")
+
     fleet_data = []
     for d in st.session_state['fleet_state']:
         route_coords = real_routes[d["dest"]]
         c_lat, c_lon = get_interpolated_pos(route_coords, d["progress"])
+        
+        # NEW FEATURE: ESG Math Calculations
+        fuel_burn = round((d["progress"] * 100) * 0.35, 1) # ~35L per 100km
+        co2_emissions = round(fuel_burn * 2.68, 1) # 2.68kg CO2 per Liter of diesel
+        
         fleet_data.append({
             "Truck": d["id"], "Destination": d["dest"],
             "start_lat": route_coords[0][0], "start_lon": route_coords[0][1],
             "curr_lat": c_lat, "curr_lon": c_lon,
             "dest_lat": route_coords[-1][0], "dest_lon": route_coords[-1][1],
             "speed": d["speed"], "Traffic Condition": d["traffic"],
-            "Route Color": d["color"], "ETA": d["eta"]
+            "Route Color": d["color"], "ETA": d["eta"],
+            "fuel": fuel_burn, "co2": co2_emissions, "progress": d["progress"]
         })
 
     try:
@@ -342,33 +397,35 @@ elif page == "GPS & Fleet Tracking":
 
     st.markdown("---")
     
+    # NEW FEATURE: ESG Integrated Focus Panel
     if selected_truck != "All Active Fleet":
         live_data = next(item for item in fleet_data if item["Truck"] == selected_truck)
-        st.subheader(f"📡 Focus Target: {selected_truck}")
+        st.subheader(f"📡 Focus Target: {selected_truck} | ESG Telemetry Active")
         col1, col2, col3, col4 = st.columns(4)
         col1.metric("Current Speed", f"{live_data['speed']} km/h")
         col2.metric("Traffic Route", live_data['Traffic Condition'])
-        col3.metric("Live ETA", live_data['ETA'])
-        col4.metric("Destination", live_data['Destination'])
+        col3.metric("Live Fuel Burn", f"{live_data['fuel']} L")
+        col4.metric("CO2 Emissions", f"{live_data['co2']} kg")
         
         plot_data = [d for d in fleet_data if d["Truck"] == selected_truck]
-        # Always provide the center/zoom so the map never panics and goes to the world view
         map_zoom = 11.5
         map_center = {"lat": plot_data[0]["curr_lat"], "lon": plot_data[0]["curr_lon"]}
     else:
         st.subheader("📡 Satellite Telemetry: All Active Fleet")
         plot_data = fleet_data
-        # Always provide the center/zoom so the map never panics and goes to the world view
         map_zoom = 9
         map_center = {"lat": 25.12, "lon": 55.20}
     
-    map_layout = dict(
-        style="carto-darkmatter",
-        zoom=map_zoom,
-        center=map_center
-    )
-    
+    map_layout = dict(style="carto-darkmatter", zoom=map_zoom, center=map_center)
     fig = go.Figure()
+    
+    # NEW FEATURE: Sandstorm Weather Anomaly Zone on Map
+    fig.add_trace(go.Scattermap(
+        mode="markers",
+        lon=[55.33], lat=[25.26], # Sharjah/DXB Border
+        marker=dict(size=80, color='rgba(255, 140, 0, 0.3)'),
+        name="Anomaly", text="⚠️ Severe Sandstorm Zone", hoverinfo='text'
+    ))
     
     for d in plot_data:
         line_color = d['Route Color'] if selected_truck != "All Active Fleet" else 'rgba(255, 255, 255, 0.2)'
@@ -382,26 +439,20 @@ elif page == "GPS & Fleet Tracking":
         
         if selected_truck != "All Active Fleet":
             fig.add_trace(go.Scattermap(
-                mode="markers+text",
-                lon=[d['start_lon']], lat=[d['start_lat']],
-                marker=dict(size=14, color='white'),
-                text="Departure: StormNode Hub", textposition="bottom center",
-                textfont=dict(color="white", size=14, weight="bold"), name="Departure", hoverinfo='text'
+                mode="markers+text", lon=[d['start_lon']], lat=[d['start_lat']],
+                marker=dict(size=14, color='white'), text="Departure: StormNode Hub",
+                textposition="bottom center", textfont=dict(color="white", size=14, weight="bold"), hoverinfo='text'
             ))
             fig.add_trace(go.Scattermap(
-                mode="markers+text",
-                lon=[d['dest_lon']], lat=[d['dest_lat']],
-                marker=dict(size=14, color='#00FF55'),
-                text=f"Arrival: {d['Destination']}", textposition="top center",
-                textfont=dict(color="#00FF55", size=14, weight="bold"), name="Arrival", hoverinfo='text'
+                mode="markers+text", lon=[d['dest_lon']], lat=[d['dest_lat']],
+                marker=dict(size=14, color='#00FF55'), text=f"Arrival: {d['Destination']}",
+                textposition="top center", textfont=dict(color="#00FF55", size=14, weight="bold"), hoverinfo='text'
             ))
 
-        marker_text = f"<b>{d['Truck']}</b><br>Traffic: {d['Traffic Condition']}<br>Speed: {d['speed']} km/h<br>ETA: {d['ETA']}"
+        marker_text = f"<b>{d['Truck']}</b><br>Speed: {d['speed']} km/h<br>ETA: {d['ETA']}<br>CO2: {d['co2']}kg"
         fig.add_trace(go.Scattermap(
-            mode="markers",
-            lon=[d['curr_lon']], lat=[d['curr_lat']],
-            marker=dict(size=18, color='#00D2FF'),
-            name=d['Truck'], text=marker_text, hoverinfo='text'
+            mode="markers", lon=[d['curr_lon']], lat=[d['curr_lat']],
+            marker=dict(size=18, color='#00D2FF'), name=d['Truck'], text=marker_text, hoverinfo='text'
         ))
 
     fig.update_layout(
@@ -423,12 +474,24 @@ elif page == "About StormNode":
     st.image("https://images.unsplash.com/photo-1553413077-190dd305871c?auto=format&fit=crop&w=1200&q=80", caption="StormNode Next-Generation Fulfillment Center")
     st.markdown("---")
     
+    # NEW FEATURE: UI Glow-Up with Plotly Gauges
     st.subheader("Global Operations At A Glance")
-    col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Daily Freight Volume", "4,850 Tons", "+12% this week")
-    col2.metric("Active Supply Nodes", "244", "+3 active")
-    col3.metric("Fleet Efficiency", "94.2%", "+1.5%")
-    col4.metric("System Uptime", "99.999%", "Optimal")
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        fig_eff = go.Figure(go.Indicator(
+            mode = "gauge+number", value = 94.2, title = {'text': "Fleet Efficiency (%)"},
+            gauge = {'axis': {'range': [None, 100]}, 'bar': {'color': "#00D2FF"}}
+        ))
+        fig_eff.update_layout(height=250, margin=dict(t=40, b=0, l=0, r=0), paper_bgcolor="rgba(0,0,0,0)", font={'color': "#C5C6C7"})
+        st.plotly_chart(fig_eff, use_container_width=True)
+    with col2:
+        fig_up = go.Figure(go.Indicator(
+            mode = "gauge+number", value = 99.9, title = {'text': "System Uptime (%)"},
+            gauge = {'axis': {'range': [None, 100]}, 'bar': {'color': "#00FF55"}}
+        ))
+        fig_up.update_layout(height=250, margin=dict(t=40, b=0, l=0, r=0), paper_bgcolor="rgba(0,0,0,0)", font={'color': "#C5C6C7"})
+        st.plotly_chart(fig_up, use_container_width=True)
     
     st.markdown("---")
     st.markdown("""
