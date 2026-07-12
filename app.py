@@ -609,7 +609,7 @@ st.sidebar.markdown(
     "<b>Batch:</b> MGB OCT 25<br>"
     "<b>Roll No:</b> MS25GLS138<br><br>"
     "<b>Student, SP Jain School of Global Management</b><br>"
-    "<i>Under the guidance of Prof. Rajiv Asrekar</i>"
+    "<i>Under the guidance of Prof. Rajiv Aserkar</i>"
     "</div>", 
     unsafe_allow_html=True
 )
