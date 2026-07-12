@@ -334,22 +334,18 @@ elif page == "GPS & Fleet Tracking":
     else:
         st.subheader("📡 Satellite Telemetry: All Active Fleet")
     
-    fig = go.Figure()
-    
-    # THE FIX: Only force the map zoom/center if you click a NEW truck. 
-    # Otherwise, it stays exactly where you drag it!
-    map_layout = dict(style="carto-darkmatter")
-    if 'last_truck' not in st.session_state or st.session_state['last_truck'] != selected_truck:
-        st.session_state['last_truck'] = selected_truck
-        if selected_truck == "All Active Fleet":
-            map_layout['zoom'] = 9
-            map_layout['center'] = {"lat": 25.12, "lon": 55.20}
-        else:
-            plot_data_first = [d for d in fleet_data if d["Truck"] == selected_truck][0]
-            map_layout['zoom'] = 11.5
-            map_layout['center'] = {"lat": plot_data_first["curr_lat"], "lon": plot_data_first["curr_lon"]}
+    # THE FIX: We provide the correct zoom/center EVERY loop, but rely on uirevision 
+    # to block it from resetting your manual panning!
+    if selected_truck == "All Active Fleet":
+        map_zoom = 9
+        map_center = {"lat": 25.12, "lon": 55.20}
+        plot_data = fleet_data
+    else:
+        plot_data = [d for d in fleet_data if d["Truck"] == selected_truck]
+        map_zoom = 11.5
+        map_center = {"lat": plot_data[0]["curr_lat"], "lon": plot_data[0]["curr_lon"]}
 
-    plot_data = fleet_data if selected_truck == "All Active Fleet" else [d for d in fleet_data if d["Truck"] == selected_truck]
+    fig = go.Figure()
     
     for d in plot_data:
         line_color = d['Route Color'] if selected_truck != "All Active Fleet" else 'rgba(255, 255, 255, 0.2)'
@@ -385,8 +381,13 @@ elif page == "GPS & Fleet Tracking":
             name=d['Truck'], text=marker_text, hoverinfo='text'
         ))
 
+    # THE FIX: uirevision handles the camera state safely now.
     fig.update_layout(
-        map=map_layout,
+        map=dict(
+            style="carto-darkmatter",
+            zoom=map_zoom,
+            center=map_center
+        ),
         uirevision=selected_truck,
         margin={"r":0,"t":0,"l":0,"b":0},
         showlegend=False,
