@@ -223,42 +223,32 @@ if page == "Dockyard Management":
     
     df = st.session_state['truck_logs']
     
-    # --- FUNCTIONAL CCTV LOGIC ---
-    # Find the most recently updated log entry
+    # --- TRUE FUNCTIONAL CCTV LOGIC ---
     latest_update = df.sort_values(by="Last_Updated", ascending=False).iloc[0]
-    time_since_update = (now - datetime.strptime(latest_update['Last_Updated'], "%Y-%m-%d %H:%M:%S")).total_seconds()
+    last_time = datetime.strptime(latest_update['Last_Updated'], "%Y-%m-%d %H:%M:%S")
+    time_since = int((now - last_time).total_seconds())
     
-    if time_since_update < 15:
-        # Active Scan Notification
-        if latest_update['Status'] == "At Dock":
-            msg = f"ENTRY SCANNED: {latest_update['Truck_ID']} | ALLOCATED TO: {latest_update['Warehouse_Location']}"
-            b_color = "#00FF55" # Green
-        else:
-            msg = f"EXIT SCANNED: {latest_update['Truck_ID']} | DISPATCH CLEARED & ROUTED"
-            b_color = "#FF3333" # Red
-            
-        scanner_html = f"""
-        <div style="position: relative; width: 100%; height: 60px; background: #1A2235; 
-             border: 2px solid {b_color}; border-radius: 5px; overflow: hidden;
-             display: flex; align-items: center; justify-content: center; color: {b_color};
-             font-family: monospace; font-size: 16px; font-weight: bold; letter-spacing: 1px;
-             box-shadow: 0 0 15px {b_color}40;">
-            [LIVE FEED] ⚡ {msg} ⚡
-        </div>
-        <br>
-        """
+    if latest_update['Status'] == "At Dock":
+        msg = f"ENTRY SCANNED: {latest_update['Truck_ID']} | BAY: {latest_update['Warehouse_Location']}"
+        b_color = "#00FF55" # Green
     else:
-        # Idle Scanning Animation
-        scanner_html = """
-        <div class="scanner-box">
-            <span>[AI VISION ON] ⚡ SCANNING PERIMETER ⚡ AWAITING NEXT VEHICLE...</span>
-            <div class="scanner-laser"></div>
-        </div>
-        <br>
-        """
+        msg = f"EXIT SCANNED: {latest_update['Truck_ID']} | DISPATCH ROUTED"
+        b_color = "#FF3333" # Red
         
+    scanner_html = f"""
+    <div style="position: relative; width: 100%; height: 60px; background: #1A2235; 
+         border: 2px solid {b_color}; border-radius: 5px; overflow: hidden;
+         display: flex; align-items: center; justify-content: space-between; padding: 0 20px; color: {b_color};
+         font-family: monospace; font-size: 15px; font-weight: bold; letter-spacing: 1px;
+         box-shadow: 0 0 15px {b_color}40;">
+        <div style="z-index: 2;">[LIVE AI GATE] ⚡ {msg}</div>
+        <div style="z-index: 2;">TIME SINCE SCAN: {time_since}s</div>
+        <div class="scanner-laser"></div>
+    </div>
+    <br>
+    """
     st.markdown(scanner_html, unsafe_allow_html=True)
-    # --- END FUNCTIONAL CCTV LOGIC ---
+    # --- END TRUE FUNCTIONAL CCTV LOGIC ---
 
     css_animations = f"""
     {audio_tag}
