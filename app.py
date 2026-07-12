@@ -79,6 +79,16 @@ st_autorefresh(interval=3000, limit=10000, key="global_autorefresh")
 if 'trigger_sound' not in st.session_state:
     st.session_state['trigger_sound'] = None
 
+# STATIC TABLE DATA (This prevents the table click from erasing!)
+if 'static_fleet_df' not in st.session_state:
+    st.session_state['static_fleet_df'] = pd.DataFrame([
+        {"Truck ID": "TRK-901", "Destination": "DXB Airport", "Status": "Active En Route"},
+        {"Truck ID": "TRK-902", "Destination": "Dubai Mall", "Status": "Active En Route"},
+        {"Truck ID": "TRK-903", "Destination": "Dubai Marina", "Status": "Active En Route"},
+        {"Truck ID": "TRK-904", "Destination": "Al Maktoum Int", "Status": "Active En Route"},
+        {"Truck ID": "TRK-905", "Destination": "Sharjah Ind", "Status": "Active En Route"}
+    ])
+
 # Fleet Progress & Traffic State
 now_init = datetime.now()
 if 'fleet_state' not in st.session_state:
@@ -139,10 +149,9 @@ now = datetime.now()
 
 # 1. LIVE RADAR UPDATES (Runs every 3 seconds to move trucks smoothly)
 for t in st.session_state['fleet_state']:
-    # Small increment creates smooth, live movement
     t['progress'] += random.uniform(0.002, 0.006)
     if t['progress'] >= 1.0:
-        t['progress'] = 0.05  # Loop back for presentation continuity
+        t['progress'] = 0.05  
         
     t['speed'] = random.randint(45, 90)
     minutes_left = int((1.0 - t['progress']) * 180)
@@ -318,7 +327,6 @@ elif page == "GPS & Fleet Tracking":
     fleet_data = []
     for d in st.session_state['fleet_state']:
         route_coords = real_routes[d["dest"]]
-        # Calculate exactly where the truck is on the curved route
         c_lat, c_lon = get_interpolated_pos(route_coords, d["progress"])
         
         fleet_data.append({
@@ -331,28 +339,40 @@ elif page == "GPS & Fleet Tracking":
             "Route Color": d["color"],
             "ETA": d["eta"]
         })
-    df_fleet = pd.DataFrame(fleet_data)
 
-    # SECURE TABLE SELECTION
+    # SECURE TABLE SELECTION (Using Frozen Data)
     try:
         selection_event = st.dataframe(
-            df_fleet[["Truck", "Destination", "speed", "Traffic Condition", "ETA"]],
+            st.session_state['static_fleet_df'],
             on_select="rerun",
-            selection_mode="single-row"
+            selection_mode="single-row",
+            key="truck_selection_table"  # This key freezes the click permanently
         )
         selected_rows = selection_event.selection.rows
         if selected_rows:
-            selected_truck = df_fleet.iloc[selected_rows[0]]["Truck"]
+            selected_truck = st.session_state['static_fleet_df'].iloc[selected_rows[0]]["Truck ID"]
         else:
             selected_truck = "All Active Fleet"
             
     except Exception as e:
         # Fallback safety net
-        st.dataframe(df_fleet[["Truck", "Destination", "speed", "Traffic Condition", "ETA"]])
-        selected_truck = st.selectbox("🎯 Target ID Focus (Select a truck to view route):", ["All Active Fleet"] + df_fleet["Truck"].tolist())
+        st.dataframe(st.session_state['static_fleet_df'])
+        selected_truck = st.selectbox("🎯 Target ID Focus (Select a truck to view route):", ["All Active Fleet"] + st.session_state['static_fleet_df']["Truck ID"].tolist())
 
     st.markdown("---")
-    st.subheader(f"📡 Satellite Telemetry: {selected_truck}")
+    
+    # NEW LIVE FOCUS PANEL (Replaces the columns we pulled out of the table)
+    if selected_truck != "All Active Fleet":
+        live_data = next(item for item in fleet_data if item["Truck"] == selected_truck)
+        st.subheader(f"📡 Focus Target: {selected_truck}")
+        
+        col1, col2, col3, col4 = st.columns(4)
+        col1.metric("Current Speed", f"{live_data['speed']} km/h")
+        col2.metric("Traffic Route", live_data['Traffic Condition'])
+        col3.metric("Live ETA", live_data['ETA'])
+        col4.metric("Destination", live_data['Destination'])
+    else:
+        st.subheader("📡 Satellite Telemetry: All Active Fleet")
     
     fig = go.Figure()
     
@@ -363,7 +383,7 @@ elif page == "GPS & Fleet Tracking":
         map_center = {"lat": 25.12, "lon": 55.20}
     else:
         plot_data = [d for d in fleet_data if d["Truck"] == selected_truck]
-        map_zoom = 11
+        map_zoom = 11.5
         map_center = {"lat": plot_data[0]["curr_lat"], "lon": plot_data[0]["curr_lon"]}
     
     for d in plot_data:
@@ -375,7 +395,7 @@ elif page == "GPS & Fleet Tracking":
             mode="lines",
             lon=[p[1] for p in route_coords],
             lat=[p[0] for p in route_coords],
-            line=dict(width=4, color=line_color),
+            line=dict(width=5, color=line_color),
             hoverinfo='none'
         ))
         
