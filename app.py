@@ -166,7 +166,7 @@ page = st.sidebar.radio("Main Menu", [
     "About StormNode"
 ])
 
-# --- GLOBAL BACKGROUND EVENT SIMULATOR (NOTIFICATIONS RESTORED) ---
+# --- GLOBAL BACKGROUND EVENT SIMULATOR (ORIGINAL NOTIFICATIONS RESTORED) ---
 current_co2 = 0
 for t in st.session_state['fleet_state']:
     t['progress'] += random.uniform(0.002, 0.006)
@@ -181,16 +181,24 @@ st.session_state['total_carbon_tax_accrued'] = round(current_co2 * 0.05, 2)
 if (now - st.session_state['last_auto_update']).total_seconds() >= 58:  
     st.session_state['last_auto_update'] = now
     locations = ["Whse A - Dock 1", "Whse B - Dock 1", "Whse C - Cold Chain"]
+    
     if st.session_state['auto_toggle'] == "entry":
         auto_truck_id = f"TRK-{random.randint(1000, 9999)}"
         offset = random.randint(-45, 45)
         scheduled_eta = now + timedelta(minutes=offset)
         kpi = "🔴 Late" if offset < -15 else ("🟢 Early" if offset > 15 else "🔵 On-Time")
-        new_entry = pd.DataFrame([{"Truck_ID": auto_truck_id, "Scheduled_ETA": scheduled_eta.strftime("%Y-%m-%d %H:%M:%S"), "Entry_Time": now.strftime("%Y-%m-%d %H:%M:%S"), "KPI_Status": kpi, "Exit_Time": "Pending", "Warehouse_Location": random.choice(locations), "Status": "At Dock", "Last_Updated": now.strftime("%Y-%m-%d %H:%M:%S")}])
+        
+        new_entry = pd.DataFrame([{
+            "Truck_ID": auto_truck_id, "Scheduled_ETA": scheduled_eta.strftime("%Y-%m-%d %H:%M:%S"),
+            "Entry_Time": now.strftime("%Y-%m-%d %H:%M:%S"), "KPI_Status": kpi,
+            "Exit_Time": "Pending", "Warehouse_Location": random.choice(locations),
+            "Status": "At Dock", "Last_Updated": now.strftime("%Y-%m-%d %H:%M:%S")
+        }])
         st.session_state['truck_logs'] = pd.concat([new_entry, st.session_state['truck_logs']], ignore_index=True)
         st.session_state['auto_toggle'] = "exit"
         st.session_state['trigger_sound'] = "entry"
-        st.toast(f"📡 Computer Vision: {auto_truck_id} plate scanned at main gate.", icon="🟢")
+        if page != "Dockyard Management":
+            st.toast(f"📡 Computer Vision: {auto_truck_id} plate scanned at main gate.", icon="🟢")
     else:
         docked = st.session_state['truck_logs'][st.session_state['truck_logs']["Status"] == "At Dock"]
         t_id = "Unknown"
@@ -202,7 +210,7 @@ if (now - st.session_state['last_auto_update']).total_seconds() >= 58:
             st.session_state['truck_logs'].at[idx, "Last_Updated"] = now.strftime("%Y-%m-%d %H:%M:%S")
         st.session_state['auto_toggle'] = "entry"
         st.session_state['trigger_sound'] = "exit"
-        if t_id != "Unknown":
+        if page != "Dockyard Management" and t_id != "Unknown":
             st.toast(f"📡 Fleet Update: {t_id} departed.", icon="🔴")
 
 audio_tag = ""
@@ -213,7 +221,7 @@ elif st.session_state['trigger_sound'] == "exit":
     audio_tag = f"""<audio autoplay><source src="https://assets.mixkit.co/active_storage/sfx/2574/2574-preview.mp3?t={time.time()}" type="audio/mpeg"></audio>"""
     st.session_state['trigger_sound'] = None
 
-if audio_tag:
+if page != "Dockyard Management" and audio_tag:
     st.markdown(audio_tag, unsafe_allow_html=True)
 
 def get_enriched_inventory():
@@ -234,7 +242,7 @@ def get_enriched_inventory():
     return df
 
 # ==========================================
-# PAGE 1: DOCKYARD MANAGEMENT (TIME-DECAY BLINKING FIXED)
+# PAGE 1: DOCKYARD MANAGEMENT
 # ==========================================
 if page == "Dockyard Management":
     st.title("🚛 Dockyard Management")
@@ -269,7 +277,6 @@ if page == "Dockyard Management":
     st.subheader(f"🟢 Active Fleet at Dock ({len(df[df['Status'] == 'At Dock'])} Units)")
     html_docked = f"<table class='custom-table'><thead><tr><th>Truck ID</th><th>Scheduled ETA</th><th>Actual Entry</th><th>KPI Status</th><th>Location</th><th>Status</th></tr></thead><tbody>"
     for _, row in df[df["Status"] == "At Dock"].iterrows():
-        # Check exactly how many seconds ago this specific row was created
         row_dt = datetime.strptime(row['Last_Updated'], "%Y-%m-%d %H:%M:%S")
         row_class = "blink-row-green" if (now - row_dt).total_seconds() <= 20 else ""
         html_docked += f"<tr class='{row_class}'><td>{row['Truck_ID']}</td><td>{row['Scheduled_ETA']}</td><td>{row['Entry_Time']}</td><td>{row['KPI_Status']}</td><td>{row['Warehouse_Location']}</td><td>{row['Status']}</td></tr>"
@@ -280,7 +287,6 @@ if page == "Dockyard Management":
     st.subheader(f"🔴 Historical Dispatched Log ({len(df[df['Status'] == 'Dispatched'])} Units)")
     html_dispatched = f"<div style='max-height: 400px; overflow-y: auto;'><table class='custom-table'><thead><tr><th>Truck ID</th><th>Scheduled ETA</th><th>Entry Time</th><th>Exit Time</th><th>KPI Status</th><th>Location</th></tr></thead><tbody>"
     for _, row in df[df["Status"] == "Dispatched"].iterrows():
-        # Check exactly how many seconds ago this specific row was dispatched
         row_dt = datetime.strptime(row['Last_Updated'], "%Y-%m-%d %H:%M:%S")
         row_class = "blink-row-red" if (now - row_dt).total_seconds() <= 20 else ""
         html_dispatched += f"<tr class='{row_class}'><td>{row['Truck_ID']}</td><td>{row['Scheduled_ETA']}</td><td>{row['Entry_Time']}</td><td>{row['Exit_Time']}</td><td>{row['KPI_Status']}</td><td>{row['Warehouse_Location']}</td></tr>"
@@ -423,7 +429,7 @@ elif page == "ERP & Global Procurement":
     erp_records = []
     for item in items_list:
         count = len(current_stock[current_stock['Item_Name'] == item])
-        base_safety = 15 # Increased base safety to match the massive inventory scale
+        base_safety = 15 
         dynamic_safety = int(base_safety * ai_multiplier)
         status = "Optimal"
         if count <= dynamic_safety:
