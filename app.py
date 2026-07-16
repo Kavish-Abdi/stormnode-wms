@@ -27,9 +27,15 @@ st.markdown("""
     @keyframes scan { 0% { left: -50%; } 100% { left: 100%; } }
     .crypto-terminal { background-color: #0d1117; color: #00FF55; font-family: 'Courier New', Courier, monospace; padding: 15px; border-radius: 5px; height: 250px; overflow-y: hidden; border: 1px solid #30363d; font-size: 13px; line-height: 1.5; }
     .agent-terminal { background-color: #07090e; color: #FFB300; font-family: 'Courier New', Courier, monospace; padding: 15px; border-radius: 5px; height: 280px; overflow-y: hidden; border: 1px solid #FFB30040; font-size: 13px; line-height: 1.6; }
+    
+    /* Custom Tables & Blinking Rows */
     .custom-table { width: 100%; text-align: left; border-collapse: collapse; color: #C5C6C7; font-size: 14px; margin-bottom: 20px;}
     .custom-table th, .custom-table td { padding: 10px; border-bottom: 1px solid #1F2833; }
     .custom-table th { color: #ffffff; font-weight: bold; background-color: #1A2235; }
+    @keyframes flashGreen { 0% {background-color: transparent;} 50% {background-color: rgba(0, 255, 85, 0.25);} 100% {background-color: transparent;} }
+    @keyframes flashRed { 0% {background-color: transparent;} 50% {background-color: rgba(255, 51, 51, 0.25);} 100% {background-color: transparent;} }
+    .blink-row-green { animation: flashGreen 2s infinite; }
+    .blink-row-red { animation: flashRed 2s infinite; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -228,7 +234,7 @@ def get_enriched_inventory():
     return df
 
 # ==========================================
-# PAGE 1: DOCKYARD MANAGEMENT
+# PAGE 1: DOCKYARD MANAGEMENT (BLINKING ROWS RESTORED)
 # ==========================================
 if page == "Dockyard Management":
     st.title("🚛 Dockyard Management")
@@ -262,16 +268,18 @@ if page == "Dockyard Management":
     
     st.subheader(f"🟢 Active Fleet at Dock ({len(df[df['Status'] == 'At Dock'])} Units)")
     html_docked = f"<table class='custom-table'><thead><tr><th>Truck ID</th><th>Scheduled ETA</th><th>Actual Entry</th><th>KPI Status</th><th>Location</th><th>Status</th></tr></thead><tbody>"
-    for _, row in df[df["Status"] == "At Dock"].iterrows():
-        html_docked += f"<tr><td>{row['Truck_ID']}</td><td>{row['Scheduled_ETA']}</td><td>{row['Entry_Time']}</td><td>{row['KPI_Status']}</td><td>{row['Warehouse_Location']}</td><td>{row['Status']}</td></tr>"
+    for i, (_, row) in enumerate(df[df["Status"] == "At Dock"].iterrows()):
+        row_class = "blink-row-green" if i == 0 else ""
+        html_docked += f"<tr class='{row_class}'><td>{row['Truck_ID']}</td><td>{row['Scheduled_ETA']}</td><td>{row['Entry_Time']}</td><td>{row['KPI_Status']}</td><td>{row['Warehouse_Location']}</td><td>{row['Status']}</td></tr>"
     html_docked += "</tbody></table>"
     st.markdown(html_docked, unsafe_allow_html=True)
 
     st.markdown("---")
     st.subheader(f"🔴 Historical Dispatched Log ({len(df[df['Status'] == 'Dispatched'])} Units)")
     html_dispatched = f"<div style='max-height: 400px; overflow-y: auto;'><table class='custom-table'><thead><tr><th>Truck ID</th><th>Scheduled ETA</th><th>Entry Time</th><th>Exit Time</th><th>KPI Status</th><th>Location</th></tr></thead><tbody>"
-    for _, row in df[df["Status"] == "Dispatched"].iterrows():
-        html_dispatched += f"<tr><td>{row['Truck_ID']}</td><td>{row['Scheduled_ETA']}</td><td>{row['Entry_Time']}</td><td>{row['Exit_Time']}</td><td>{row['KPI_Status']}</td><td>{row['Warehouse_Location']}</td></tr>"
+    for i, (_, row) in enumerate(df[df["Status"] == "Dispatched"].iterrows()):
+        row_class = "blink-row-red" if i == 0 else ""
+        html_dispatched += f"<tr class='{row_class}'><td>{row['Truck_ID']}</td><td>{row['Scheduled_ETA']}</td><td>{row['Entry_Time']}</td><td>{row['Exit_Time']}</td><td>{row['KPI_Status']}</td><td>{row['Warehouse_Location']}</td></tr>"
     html_dispatched += "</tbody></table></div>"
     st.markdown(html_dispatched, unsafe_allow_html=True)
     render_footer()
@@ -411,7 +419,7 @@ elif page == "ERP & Global Procurement":
     erp_records = []
     for item in items_list:
         count = len(current_stock[current_stock['Item_Name'] == item])
-        base_safety = 15 # Increased base safety to match the massive inventory scale
+        base_safety = 15 
         dynamic_safety = int(base_safety * ai_multiplier)
         status = "Optimal"
         if count <= dynamic_safety:
