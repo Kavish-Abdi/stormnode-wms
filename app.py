@@ -19,45 +19,14 @@ except:
 # --- GLOBAL STYLES & UI GLOW-UP ---
 st.markdown("""
     <style>
-    div[data-testid="stToastContainer"] {
-        top: 2rem; right: 2rem; bottom: auto !important; left: auto !important;
-    }
-    .pulse-orb {
-        height: 12px; width: 12px; background-color: #00FF55; border-radius: 50%;
-        display: inline-block; margin-right: 8px; box-shadow: 0 0 10px #00FF55;
-        animation: pulse-animation 1.5s infinite;
-    }
-    @keyframes pulse-animation {
-        0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 255, 85, 0.7); }
-        70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(0, 255, 85, 0); }
-        100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 255, 85, 0); }
-    }
-    .scanner-box {
-        position: relative; width: 100%; height: 60px; background: #1A2235; 
-        border: 1px solid #00D2FF; border-radius: 5px; overflow: hidden;
-        display: flex; align-items: center; justify-content: center; color: #00D2FF;
-        font-family: monospace; font-weight: bold; letter-spacing: 2px;
-    }
-    .scanner-laser {
-        position: absolute; left: -100%; top: 0; width: 50%; height: 100%;
-        background: linear-gradient(90deg, transparent, rgba(0, 210, 255, 0.4), transparent);
-        animation: scan 3s infinite linear;
-    }
+    div[data-testid="stToastContainer"] { top: 2rem; right: 2rem; bottom: auto !important; left: auto !important; }
+    .pulse-orb { height: 12px; width: 12px; background-color: #00FF55; border-radius: 50%; display: inline-block; margin-right: 8px; box-shadow: 0 0 10px #00FF55; animation: pulse-animation 1.5s infinite; }
+    @keyframes pulse-animation { 0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 255, 85, 0.7); } 70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(0, 255, 85, 0); } 100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(0, 255, 85, 0); } }
+    .scanner-box { position: relative; width: 100%; height: 60px; background: #1A2235; border: 1px solid #00D2FF; border-radius: 5px; overflow: hidden; display: flex; align-items: center; justify-content: center; color: #00D2FF; font-family: monospace; font-weight: bold; letter-spacing: 2px; }
+    .scanner-laser { position: absolute; left: -100%; top: 0; width: 50%; height: 100%; background: linear-gradient(90deg, transparent, rgba(0, 210, 255, 0.4), transparent); animation: scan 3s infinite linear; }
     @keyframes scan { 0% { left: -50%; } 100% { left: 100%; } }
-    
-    .crypto-terminal {
-        background-color: #0d1117; color: #00FF55; font-family: 'Courier New', Courier, monospace;
-        padding: 15px; border-radius: 5px; height: 180px; overflow-y: hidden;
-        border: 1px solid #30363d; font-size: 13px; line-height: 1.5;
-    }
-    
-    .agent-terminal { 
-        background-color: #07090e; color: #FFB300; font-family: 'Courier New', Courier, monospace; 
-        padding: 15px; border-radius: 5px; height: 280px; overflow-y: hidden; 
-        border: 1px solid #FFB30040; font-size: 13px; line-height: 1.6; 
-    }
-    
-    /* Custom Tables */
+    .crypto-terminal { background-color: #0d1117; color: #00FF55; font-family: 'Courier New', Courier, monospace; padding: 15px; border-radius: 5px; height: 250px; overflow-y: hidden; border: 1px solid #30363d; font-size: 13px; line-height: 1.5; }
+    .agent-terminal { background-color: #07090e; color: #FFB300; font-family: 'Courier New', Courier, monospace; padding: 15px; border-radius: 5px; height: 280px; overflow-y: hidden; border: 1px solid #FFB30040; font-size: 13px; line-height: 1.6; }
     .custom-table { width: 100%; text-align: left; border-collapse: collapse; color: #C5C6C7; font-size: 14px; margin-bottom: 20px;}
     .custom-table th, .custom-table td { padding: 10px; border-bottom: 1px solid #1F2833; }
     .custom-table th { color: #ffffff; font-weight: bold; background-color: #1A2235; }
@@ -68,8 +37,7 @@ st.sidebar.markdown(
     "<div style='text-align: center; font-family: \"Times New Roman\", Times, serif; color: #00D2FF; font-size: 26px; font-weight: bold; margin-top: -15px;'>"
     "StormNode Logistics<br>"
     "<span style='font-size: 14px; color: #00F0FF; font-style: italic;'>Powering the Connected Supply Chain</span>"
-    "</div>",
-    unsafe_allow_html=True
+    "</div>", unsafe_allow_html=True
 )
 
 st.sidebar.markdown("<br><div style='display:flex; align-items:center; justify-content:center; font-family:monospace; color:#C5C6C7;'><div class='pulse-orb'></div> System Online | AI Active</div><br>", unsafe_allow_html=True)
@@ -80,8 +48,7 @@ def render_footer():
         "<div style='text-align: center; font-family: \"Times New Roman\", Times, serif; color: #C5C6C7; font-size: 14px;'>"
         "<strong>StormNode Logistics</strong> | Est. 2026<br>"
         "<em>Powering the Connected Supply Chain</em>"
-        "</div>", 
-        unsafe_allow_html=True
+        "</div>", unsafe_allow_html=True
     )
 
 real_routes = {
@@ -103,127 +70,104 @@ def get_interpolated_pos(route, progress):
     lat2, lon2 = route[idx+1]
     return lat1 + (lat2 - lat1) * frac, lon1 + (lon2 - lon1) * frac
 
-# --- GLOBAL AUTOREFRESH ---
+# --- GLOBAL AUTOREFRESH & STATE ---
 st_autorefresh(interval=5000, limit=10000, key="global_autorefresh")
 now = datetime.now()
 
 if 'trigger_sound' not in st.session_state: st.session_state['trigger_sound'] = None
-
 if 'blockchain_ledger' not in st.session_state:
-    st.session_state['blockchain_ledger'] = [
-        f"[{now.strftime('%H:%M:%S')}] SYSTEM INITIALIZED: Genesis Block Created",
-        f"[{now.strftime('%H:%M:%S')}] WAITING FOR SECURE DISPATCH CONTRACTS..."
-    ]
-
-# ERP Auto-Order Logs
+    st.session_state['blockchain_ledger'] = [f"[{now.strftime('%H:%M:%S')}] SYSTEM INITIALIZED: Genesis Block Created"]
 if 'erp_order_logs' not in st.session_state:
-    st.session_state['erp_order_logs'] = [
-        f"[{now.strftime('%H:%M:%S')}] ERP SYSTEM ONLINE: Awaiting stock updates..."
-    ]
+    st.session_state['erp_order_logs'] = [f"[{now.strftime('%H:%M:%S')}] ERP SYSTEM ONLINE: Cross-Border Nodes Active"]
+
+# GLOBAL VARS FOR ERP
+items_list = ["Packaged Grains", "Canned Preserves", "Beverage Pallets", "Snack Cartons", "Ready-to-Eat Meals", "Dairy Alternatives"]
+base_costs = {"Packaged Grains": 120, "Canned Preserves": 85, "Beverage Pallets": 210, "Snack Cartons": 65, "Ready-to-Eat Meals": 150, "Dairy Alternatives": 90}
+currency_rates = {"Dubai Hub (AED)": 3.67, "Singapore Hub (SGD)": 1.35, "India Hub (INR)": 83.50}
 
 if 'static_fleet_df' not in st.session_state:
     st.session_state['static_fleet_df'] = pd.DataFrame([
         {"Truck ID": "TRK-901", "Destination": "DXB Airport", "Status": "Active En Route"},
         {"Truck ID": "TRK-902", "Destination": "Dubai Mall", "Status": "Active En Route"},
-        {"Truck ID": "TRK-903", "Destination": "Dubai Marina", "Status": "Active En Route"},
-        {"Truck ID": "TRK-904", "Destination": "Al Maktoum Int", "Status": "Active En Route"},
-        {"Truck ID": "TRK-905", "Destination": "Sharjah Ind", "Status": "Active En Route"}
+        {"Truck ID": "TRK-903", "Destination": "Dubai Marina", "Status": "Active En Route"}
     ])
 
 if 'fleet_state' not in st.session_state:
     st.session_state['fleet_state'] = [
         {"id": "TRK-901", "dest": "DXB Airport", "progress": 0.15, "traffic": "Moderate", "color": "#FFBF00", "speed": 62, "eta": (now + timedelta(minutes=int(0.85*180))).strftime("%I:%M %p")},
         {"id": "TRK-902", "dest": "Dubai Mall", "progress": 0.40, "traffic": "Heavy Traffic", "color": "#FF3333", "speed": 45, "eta": (now + timedelta(minutes=int(0.60*180))).strftime("%I:%M %p")},
-        {"id": "TRK-903", "dest": "Dubai Marina", "progress": 0.65, "traffic": "Clear", "color": "#00FF55", "speed": 85, "eta": (now + timedelta(minutes=int(0.35*180))).strftime("%I:%M %p")},
-        {"id": "TRK-904", "dest": "Al Maktoum Int", "progress": 0.20, "traffic": "Clear", "color": "#00FF55", "speed": 78, "eta": (now + timedelta(minutes=int(0.80*180))).strftime("%I:%M %p")},
-        {"id": "TRK-905", "dest": "Sharjah Ind", "progress": 0.80, "traffic": "Moderate", "color": "#FFBF00", "speed": 55, "eta": (now + timedelta(minutes=int(0.20*180))).strftime("%I:%M %p")}
+        {"id": "TRK-903", "dest": "Dubai Marina", "progress": 0.65, "traffic": "Clear", "color": "#00FF55", "speed": 85, "eta": (now + timedelta(minutes=int(0.35*180))).strftime("%I:%M %p")}
     ]
 
-# SYNTHETIC TRUCK LOGS (ADDED ETA & KPI)
 if 'truck_logs' not in st.session_state:
     synthetic_trucks = []
     locations = ["Whse A - Dock 1", "Whse A - Dock 2", "Whse B - Dock 1", "Whse C - Heavy Freight", "Whse C - Cold Chain"]
     for i in range(10):
         entry_time = now - timedelta(minutes=random.randint(15, 120))
-        # Determine Scheduled ETA and KPI
-        offset = random.randint(-45, 45) # Minutes late or early
+        offset = random.randint(-45, 45)
         scheduled_eta = entry_time + timedelta(minutes=offset)
-        if offset < -15: kpi = "🔴 Late"
-        elif offset > 15: kpi = "🟢 Early"
-        else: kpi = "🔵 On-Time"
-
+        kpi = "🔴 Late" if offset < -15 else ("🟢 Early" if offset > 15 else "🔵 On-Time")
         synthetic_trucks.append({
-            "Truck_ID": f"TRK-{random.randint(1000, 9999)}", 
-            "Scheduled_ETA": scheduled_eta.strftime("%Y-%m-%d %H:%M:%S"),
-            "Entry_Time": entry_time.strftime("%Y-%m-%d %H:%M:%S"), 
-            "KPI_Status": kpi,
+            "Truck_ID": f"TRK-{random.randint(1000, 9999)}", "Scheduled_ETA": scheduled_eta.strftime("%Y-%m-%d %H:%M:%S"),
+            "Entry_Time": entry_time.strftime("%Y-%m-%d %H:%M:%S"), "KPI_Status": kpi,
             "Exit_Time": "Pending" if i % 2 == 0 else (entry_time + timedelta(minutes=45)).strftime("%Y-%m-%d %H:%M:%S"), 
-            "Warehouse_Location": random.choice(locations),
-            "Status": "At Dock" if i % 2 == 0 else "Dispatched",
+            "Warehouse_Location": random.choice(locations), "Status": "At Dock" if i % 2 == 0 else "Dispatched",
             "Last_Updated": entry_time.strftime("%Y-%m-%d %H:%M:%S")
         })
     st.session_state['truck_logs'] = pd.DataFrame(synthetic_trucks)
     st.session_state['last_auto_update'] = now
     st.session_state['auto_toggle'] = "entry" 
 
-# SYNTHETIC INVENTORY (ADDED SHELF LIFE)
-items_list = ["Semiconductors", "Lithium Batteries", "Auto Parts", "Medical Supplies", "Consumer Tech", "Machinery"]
 if 'inventory' not in st.session_state:
     synthetic_inv = []
     sides = ["North Wing", "South Wing", "East Wing", "West Wing"]
-    for i in range(35):
+    for i in range(25):
+        item = random.choice(items_list)
         time_received = now - timedelta(days=random.randint(1, 90))
         max_life = random.choice([30, 60, 90, 120])
         synthetic_inv.append({
-            "Batch_QR": f"QR-{random.randint(1000, 9999)}", 
-            "Item_Name": random.choice(items_list), 
-            "Warehouse_Side": random.choice(sides),
-            "Aisle_Number": f"Aisle {random.randint(1, 15)}",
-            "Bin_Location": f"Bin {random.choice(['A','B','C','D'])}-{random.randint(1,9)}",
+            "Batch_QR": f"QR-{random.randint(1000, 9999)}", "Item_Name": item, 
+            "Unit_Cost_USD": base_costs[item], "Warehouse_Side": random.choice(sides),
+            "Aisle_Number": f"Aisle {random.randint(1, 15)}", "Bin_Location": f"Bin {random.choice(['A','B','C'])}-{random.randint(1,9)}",
             "X_Coord": random.randint(1, 20), "Y_Coord": random.randint(1, 15), "Z_Coord": random.randint(1, 5),
-            "Time_Received": time_received.strftime("%Y-%m-%d %H:%M:%S"), 
-            "Max_Shelf_Life_Days": max_life,
+            "Time_Received": time_received.strftime("%Y-%m-%d %H:%M:%S"), "Max_Shelf_Life_Days": max_life,
             "Time_Dispatched": "N/A", "Dispatched_On_Truck": "N/A", "Status": "In Warehouse"
         })
     st.session_state['inventory'] = pd.DataFrame(synthetic_inv)
+    st.session_state['total_carbon_tax_accrued'] = 0.0
 
 # --- NAVIGATION ---
 st.sidebar.markdown("---")
 page = st.sidebar.radio("Main Menu", [
     "Dockyard Management", 
     "Inventory & QR Tracking", 
-    "ERP & Automated Procurement",
+    "ERP & Global Procurement",
     "GPS & Fleet Tracking",
     "AI Predictive Analytics",
     "About StormNode"
 ])
 
 # --- GLOBAL BACKGROUND EVENT SIMULATOR ---
+current_co2 = 0
 for t in st.session_state['fleet_state']:
     t['progress'] += random.uniform(0.002, 0.006)
     if t['progress'] >= 1.0: t['progress'] = 0.05  
     t['speed'] = random.randint(45, 90)
     minutes_left = int((1.0 - t['progress']) * 180)
     t['eta'] = (now + timedelta(minutes=minutes_left)).strftime("%I:%M %p") if t['progress'] <= 0.95 else "Arriving"
+    current_co2 += round((t["progress"] * 100) * 0.35 * 2.68, 2)
+
+st.session_state['total_carbon_tax_accrued'] = round(current_co2 * 0.05, 2)
 
 if (now - st.session_state['last_auto_update']).total_seconds() >= 58:  
     st.session_state['last_auto_update'] = now
-    locations = ["Whse A - Dock 1", "Whse A - Dock 2", "Whse B - Dock 1", "Whse C - Heavy Freight"]
-    
+    locations = ["Whse A - Dock 1", "Whse B - Dock 1", "Whse C - Cold Chain"]
     if st.session_state['auto_toggle'] == "entry":
         auto_truck_id = f"TRK-{random.randint(1000, 9999)}"
         offset = random.randint(-45, 45)
         scheduled_eta = now + timedelta(minutes=offset)
-        if offset < -15: kpi = "🔴 Late"
-        elif offset > 15: kpi = "🟢 Early"
-        else: kpi = "🔵 On-Time"
-        
-        new_entry = pd.DataFrame([{
-            "Truck_ID": auto_truck_id, "Scheduled_ETA": scheduled_eta.strftime("%Y-%m-%d %H:%M:%S"),
-            "Entry_Time": now.strftime("%Y-%m-%d %H:%M:%S"), "KPI_Status": kpi,
-            "Exit_Time": "Pending", "Warehouse_Location": random.choice(locations),
-            "Status": "At Dock", "Last_Updated": now.strftime("%Y-%m-%d %H:%M:%S")
-        }])
+        kpi = "🔴 Late" if offset < -15 else ("🟢 Early" if offset > 15 else "🔵 On-Time")
+        new_entry = pd.DataFrame([{"Truck_ID": auto_truck_id, "Scheduled_ETA": scheduled_eta.strftime("%Y-%m-%d %H:%M:%S"), "Entry_Time": now.strftime("%Y-%m-%d %H:%M:%S"), "KPI_Status": kpi, "Exit_Time": "Pending", "Warehouse_Location": random.choice(locations), "Status": "At Dock", "Last_Updated": now.strftime("%Y-%m-%d %H:%M:%S")}])
         st.session_state['truck_logs'] = pd.concat([new_entry, st.session_state['truck_logs']], ignore_index=True)
         st.session_state['auto_toggle'] = "exit"
         st.session_state['trigger_sound'] = "entry"
@@ -253,14 +197,10 @@ elif st.session_state['trigger_sound'] == "exit":
 if page != "Dockyard Management" and audio_tag:
     st.markdown(audio_tag, unsafe_allow_html=True)
 
-# HELPER: Dynamic Inventory Calculation for Health
 def get_enriched_inventory():
     df = st.session_state['inventory'].copy()
-    # Calculate Age
     df['Time_Received_DT'] = pd.to_datetime(df['Time_Received'])
     df['Age_Days'] = (now - df['Time_Received_DT']).dt.days
-    
-    # Calculate Health Status
     health_col = []
     for _, row in df.iterrows():
         if row['Status'] != "In Warehouse":
@@ -345,7 +285,7 @@ elif page == "Inventory & QR Tracking":
         if st.button("Store Inventory", type="primary"):
             if batch_qr and item_name:
                 new_item = pd.DataFrame([{
-                    "Batch_QR": batch_qr, "Item_Name": item_name, "Warehouse_Side": side,
+                    "Batch_QR": batch_qr, "Item_Name": item_name, "Unit_Cost_USD": base_costs[item_name], "Warehouse_Side": side,
                     "Aisle_Number": aisle, "Bin_Location": bin_loc,
                     "X_Coord": random.randint(1, 20), "Y_Coord": random.randint(1, 15), "Z_Coord": random.randint(1, 5),
                     "Time_Received": now.strftime("%Y-%m-%d %H:%M:%S"), 
@@ -432,66 +372,81 @@ elif page == "Inventory & QR Tracking":
     render_footer()
 
 # ==========================================
-# PAGE 3: ERP & AUTOMATED PROCUREMENT
+# PAGE 3: ERP & GLOBAL PROCUREMENT
 # ==========================================
-elif page == "ERP & Automated Procurement":
-    st.title("⚙️ ERP & Peak Season Procurement")
-    st.markdown("Centralized Enterprise Resource Planning. Tracks real-time aggregate stock, peak-season safety margins, and autonomous API procurement.")
+elif page == "ERP & Global Procurement":
+    st.title("⚙️ ERP & Global Intermodal Procurement")
+    st.markdown("Full-suite enterprise resource planning integrated with AI forecasting, cross-border currency exchanges, and ESG governance.")
     
-    # Process ERP logic
-    erp_records = []
     inv_df = get_enriched_inventory()
     current_stock = inv_df[inv_df["Status"] == "In Warehouse"]
     
+    capital_locked = current_stock['Unit_Cost_USD'].sum()
+    carbon_tax = st.session_state['total_carbon_tax_accrued']
+    
+    is_peak_window = now.weekday() in [3, 4] 
+    ai_multiplier = 1.5 if is_peak_window else 1.0
+    
+    st.markdown("---")
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Capital Locked (Inventory)", f"${capital_locked:,.2f}")
+    c2.metric("ESG Carbon Tax Accrued", f"${carbon_tax:,.2f}")
+    c3.metric("AI Demand Forecast", "Surge Expected" if is_peak_window else "Stable Baseline")
+    c4.metric("Dynamic Stock Multiplier", f"{ai_multiplier}x")
+    st.markdown("---")
+
+    erp_records = []
     for item in items_list:
         count = len(current_stock[current_stock['Item_Name'] == item])
-        # Define arbitrary safety stock rules
-        safety_stock = 5 if item not in ["Semiconductors", "Medical Supplies"] else 8
-        peak_safety_stock = safety_stock * 2
-        
+        base_safety = 4 
+        dynamic_safety = int(base_safety * ai_multiplier)
         status = "Optimal"
-        if count <= safety_stock:
+        if count <= dynamic_safety:
             status = "🔴 Auto-Order Triggered"
-            # Auto-order logic simulation
             if f"AUTO_ORDER_{item}" not in " ".join(st.session_state['erp_order_logs'][:5]):
-                order_qty = peak_safety_stock - count
-                log = f"[{now.strftime('%H:%M:%S')}] AUTO-PROCUREMENT API: Ordered {order_qty}x {item} (Stock fell to {count}, Critical Threshold: {safety_stock})"
-                st.session_state['erp_order_logs'].insert(0, log)
-        elif count <= peak_safety_stock:
-            status = "🟠 At Risk for Peak Season"
-            
-        erp_records.append({
-            "Product": item,
-            "Current Live Stock": count,
-            "Safety Stock (Standard)": safety_stock,
-            "Safety Stock (Peak Season)": peak_safety_stock,
-            "ERP Status": status
-        })
+                order_qty = (dynamic_safety * 2) - count
+                best_hub, best_rate = random.choice(list(currency_rates.items()))
+                local_cost = round(base_costs[item] * best_rate, 2)
+                st.session_state['erp_order_logs'].insert(0, f"[{now.strftime('%H:%M:%S')}] 🤖 AI CROSS-BORDER EXECUTION: Bought {order_qty}x {item} from {best_hub} @ {local_cost} local currency.")
+                st.session_state['erp_order_logs'].insert(0, f"[{now.strftime('%H:%M:%S')}] AUTO_ORDER_{item}_LOGGED")
+        elif count <= dynamic_safety + 2:
+            status = "🟠 Approaching AI Threshold"
+        erp_records.append({"Product": item, "Live Stock": count, "Dynamic AI Safety": dynamic_safety, "ERP Status": status})
         
-    erp_df = pd.DataFrame(erp_records)
-    
-    col1, col2 = st.columns([2, 1])
-    with col1:
-        st.subheader("Aggregate Stock & Safety Thresholds")
-        st.dataframe(erp_df, use_container_width=True)
+    colA, colB = st.columns([1.5, 1])
+    with colA:
+        st.subheader("Global Inventory & AI Thresholds")
+        st.dataframe(pd.DataFrame(erp_records), use_container_width=True)
         
-    with col2:
-        st.subheader("Manual Procurement Entry")
-        with st.form("manual_order"):
-            mo_item = st.selectbox("Select Product", items_list)
-            mo_qty = st.number_input("Order Quantity", min_value=1, max_value=1000, value=10)
-            mo_urgency = st.selectbox("Priority", ["Standard", "Expedited", "AOG / Critical"])
-            submitted = st.form_submit_button("Submit Purchase Order")
+        st.subheader("Supplier Health Matrix (Lead Times)")
+        supplier_data = pd.DataFrame([
+            {"Supplier Code": "SUP-IND-01", "Region": "India", "Avg Lead Time": "3.2 Days", "On-Time %": "98%", "Grade": "🟢 A (Prime)"},
+            {"Supplier Code": "SUP-DXB-99", "Region": "Dubai", "Avg Lead Time": "1.1 Days", "On-Time %": "99%", "Grade": "🟢 A (Prime)"},
+            {"Supplier Code": "SUP-SGP-42", "Region": "Singapore", "Avg Lead Time": "5.6 Days", "On-Time %": "82%", "Grade": "🟠 C (Risk)"}
+        ])
+        st.dataframe(supplier_data, hide_index=True, use_container_width=True)
+
+    with colB:
+        st.subheader("Intermodal Procurement Optimizer")
+        with st.form("intermodal_order"):
+            mo_item = st.selectbox("Bulk Order (Packaged Foods)", items_list)
+            mo_qty = st.number_input("Tonnage (Pallets)", min_value=10, max_value=500, value=50)
+            transport_mode = st.radio("Select Logistics Network", ["🛣️ Standard Highway Fleet", "🚂 High-Speed Rail Network"])
+            submitted = st.form_submit_button("Run Cost Analysis & Procure")
             if submitted:
-                log = f"[{now.strftime('%H:%M:%S')}] MANUAL PO PLACED: {mo_qty}x {mo_item} | Priority: {mo_urgency} | Authorized by System Admin."
-                st.session_state['erp_order_logs'].insert(0, log)
-                st.success(f"PO Submitted for {mo_qty}x {mo_item}.")
-                st.rerun()
-                
-    st.markdown("---")
-    st.markdown("#### 📡 Procurement AI Action Log")
-    po_content = "<br>".join(st.session_state['erp_order_logs'])
-    st.markdown(f'<div class="crypto-terminal" style="color: #00D2FF; border-color: #00D2FF;">{po_content}</div>', unsafe_allow_html=True)
+                if "Rail" in transport_mode:
+                    cost = mo_qty * 15
+                    esg_impact = "High Carbon Savings (+ ESG Credits)"
+                    time_est = "4 Days"
+                else:
+                    cost = mo_qty * 45
+                    esg_impact = "Heavy Carbon Penalty (Increased Tax)"
+                    time_est = "1.5 Days"
+                st.session_state['erp_order_logs'].insert(0, f"[{now.strftime('%H:%M:%S')}] INTERMODAL PO: {mo_qty} pallets {mo_item} via {transport_mode}. Cost: ${cost}. ESG Impact: {esg_impact}.")
+                st.success(f"Dispatched via {transport_mode} | Transit: {time_est} | Logistics Cost: ${cost}")
+
+    st.markdown("#### 📡 Global AI Action & Intermodal Log")
+    st.markdown(f'<div class="crypto-terminal">{"<br>".join(st.session_state["erp_order_logs"])}</div>', unsafe_allow_html=True)
     render_footer()
 
 # ==========================================
