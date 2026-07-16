@@ -234,7 +234,7 @@ def get_enriched_inventory():
     return df
 
 # ==========================================
-# PAGE 1: DOCKYARD MANAGEMENT (BLINKING ROWS RESTORED)
+# PAGE 1: DOCKYARD MANAGEMENT (TIME-DECAY BLINKING FIXED)
 # ==========================================
 if page == "Dockyard Management":
     st.title("🚛 Dockyard Management")
@@ -268,8 +268,10 @@ if page == "Dockyard Management":
     
     st.subheader(f"🟢 Active Fleet at Dock ({len(df[df['Status'] == 'At Dock'])} Units)")
     html_docked = f"<table class='custom-table'><thead><tr><th>Truck ID</th><th>Scheduled ETA</th><th>Actual Entry</th><th>KPI Status</th><th>Location</th><th>Status</th></tr></thead><tbody>"
-    for i, (_, row) in enumerate(df[df["Status"] == "At Dock"].iterrows()):
-        row_class = "blink-row-green" if i == 0 else ""
+    for _, row in df[df["Status"] == "At Dock"].iterrows():
+        # Check exactly how many seconds ago this specific row was created
+        row_dt = datetime.strptime(row['Last_Updated'], "%Y-%m-%d %H:%M:%S")
+        row_class = "blink-row-green" if (now - row_dt).total_seconds() <= 20 else ""
         html_docked += f"<tr class='{row_class}'><td>{row['Truck_ID']}</td><td>{row['Scheduled_ETA']}</td><td>{row['Entry_Time']}</td><td>{row['KPI_Status']}</td><td>{row['Warehouse_Location']}</td><td>{row['Status']}</td></tr>"
     html_docked += "</tbody></table>"
     st.markdown(html_docked, unsafe_allow_html=True)
@@ -277,8 +279,10 @@ if page == "Dockyard Management":
     st.markdown("---")
     st.subheader(f"🔴 Historical Dispatched Log ({len(df[df['Status'] == 'Dispatched'])} Units)")
     html_dispatched = f"<div style='max-height: 400px; overflow-y: auto;'><table class='custom-table'><thead><tr><th>Truck ID</th><th>Scheduled ETA</th><th>Entry Time</th><th>Exit Time</th><th>KPI Status</th><th>Location</th></tr></thead><tbody>"
-    for i, (_, row) in enumerate(df[df["Status"] == "Dispatched"].iterrows()):
-        row_class = "blink-row-red" if i == 0 else ""
+    for _, row in df[df["Status"] == "Dispatched"].iterrows():
+        # Check exactly how many seconds ago this specific row was dispatched
+        row_dt = datetime.strptime(row['Last_Updated'], "%Y-%m-%d %H:%M:%S")
+        row_class = "blink-row-red" if (now - row_dt).total_seconds() <= 20 else ""
         html_dispatched += f"<tr class='{row_class}'><td>{row['Truck_ID']}</td><td>{row['Scheduled_ETA']}</td><td>{row['Entry_Time']}</td><td>{row['Exit_Time']}</td><td>{row['KPI_Status']}</td><td>{row['Warehouse_Location']}</td></tr>"
     html_dispatched += "</tbody></table></div>"
     st.markdown(html_dispatched, unsafe_allow_html=True)
@@ -419,7 +423,7 @@ elif page == "ERP & Global Procurement":
     erp_records = []
     for item in items_list:
         count = len(current_stock[current_stock['Item_Name'] == item])
-        base_safety = 15 
+        base_safety = 15 # Increased base safety to match the massive inventory scale
         dynamic_safety = int(base_safety * ai_multiplier)
         status = "Optimal"
         if count <= dynamic_safety:
