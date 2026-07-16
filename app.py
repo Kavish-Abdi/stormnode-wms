@@ -85,50 +85,63 @@ items_list = ["Packaged Grains", "Canned Preserves", "Beverage Pallets", "Snack 
 base_costs = {"Packaged Grains": 120, "Canned Preserves": 85, "Beverage Pallets": 210, "Snack Cartons": 65, "Ready-to-Eat Meals": 150, "Dairy Alternatives": 90}
 currency_rates = {"Dubai Hub (AED)": 3.67, "Singapore Hub (SGD)": 1.35, "India Hub (INR)": 83.50}
 
+# MASSIVELY SCALED FLEET DATA
 if 'static_fleet_df' not in st.session_state:
     st.session_state['static_fleet_df'] = pd.DataFrame([
         {"Truck ID": "TRK-901", "Destination": "DXB Airport", "Status": "Active En Route"},
         {"Truck ID": "TRK-902", "Destination": "Dubai Mall", "Status": "Active En Route"},
-        {"Truck ID": "TRK-903", "Destination": "Dubai Marina", "Status": "Active En Route"}
+        {"Truck ID": "TRK-903", "Destination": "Dubai Marina", "Status": "Active En Route"},
+        {"Truck ID": "TRK-904", "Destination": "Al Maktoum Int", "Status": "Active En Route"},
+        {"Truck ID": "TRK-905", "Destination": "Sharjah Ind", "Status": "Active En Route"},
+        {"Truck ID": "TRK-906", "Destination": "DXB Airport", "Status": "Active En Route"},
+        {"Truck ID": "TRK-907", "Destination": "Dubai Mall", "Status": "Active En Route"},
+        {"Truck ID": "TRK-908", "Destination": "Al Maktoum Int", "Status": "Active En Route"}
     ])
 
 if 'fleet_state' not in st.session_state:
     st.session_state['fleet_state'] = [
         {"id": "TRK-901", "dest": "DXB Airport", "progress": 0.15, "traffic": "Moderate", "color": "#FFBF00", "speed": 62, "eta": (now + timedelta(minutes=int(0.85*180))).strftime("%I:%M %p")},
         {"id": "TRK-902", "dest": "Dubai Mall", "progress": 0.40, "traffic": "Heavy Traffic", "color": "#FF3333", "speed": 45, "eta": (now + timedelta(minutes=int(0.60*180))).strftime("%I:%M %p")},
-        {"id": "TRK-903", "dest": "Dubai Marina", "progress": 0.65, "traffic": "Clear", "color": "#00FF55", "speed": 85, "eta": (now + timedelta(minutes=int(0.35*180))).strftime("%I:%M %p")}
+        {"id": "TRK-903", "dest": "Dubai Marina", "progress": 0.65, "traffic": "Clear", "color": "#00FF55", "speed": 85, "eta": (now + timedelta(minutes=int(0.35*180))).strftime("%I:%M %p")},
+        {"id": "TRK-904", "dest": "Al Maktoum Int", "progress": 0.20, "traffic": "Clear", "color": "#00FF55", "speed": 78, "eta": (now + timedelta(minutes=int(0.80*180))).strftime("%I:%M %p")},
+        {"id": "TRK-905", "dest": "Sharjah Ind", "progress": 0.80, "traffic": "Moderate", "color": "#FFBF00", "speed": 55, "eta": (now + timedelta(minutes=int(0.20*180))).strftime("%I:%M %p")},
+        {"id": "TRK-906", "dest": "DXB Airport", "progress": 0.35, "traffic": "Clear", "color": "#00FF55", "speed": 82, "eta": (now + timedelta(minutes=int(0.65*180))).strftime("%I:%M %p")},
+        {"id": "TRK-907", "dest": "Dubai Mall", "progress": 0.10, "traffic": "Heavy Traffic", "color": "#FF3333", "speed": 35, "eta": (now + timedelta(minutes=int(0.90*180))).strftime("%I:%M %p")},
+        {"id": "TRK-908", "dest": "Al Maktoum Int", "progress": 0.55, "traffic": "Moderate", "color": "#FFBF00", "speed": 60, "eta": (now + timedelta(minutes=int(0.45*180))).strftime("%I:%M %p")}
     ]
 
+# MASSIVELY SCALED DOCKYARD LOGS
 if 'truck_logs' not in st.session_state:
     synthetic_trucks = []
-    locations = ["Whse A - Dock 1", "Whse A - Dock 2", "Whse B - Dock 1", "Whse C - Heavy Freight", "Whse C - Cold Chain"]
-    for i in range(10):
-        entry_time = now - timedelta(minutes=random.randint(15, 120))
+    locations = ["Whse A - Dock 1", "Whse A - Dock 2", "Whse A - Dock 3", "Whse B - Dock 1", "Whse B - Dock 2", "Whse C - Heavy Freight", "Whse C - Cold Chain"]
+    for i in range(40):  # Scaled up to 40 records
+        entry_time = now - timedelta(minutes=random.randint(15, 300))
         offset = random.randint(-45, 45)
         scheduled_eta = entry_time + timedelta(minutes=offset)
         kpi = "🔴 Late" if offset < -15 else ("🟢 Early" if offset > 15 else "🔵 On-Time")
         synthetic_trucks.append({
             "Truck_ID": f"TRK-{random.randint(1000, 9999)}", "Scheduled_ETA": scheduled_eta.strftime("%Y-%m-%d %H:%M:%S"),
             "Entry_Time": entry_time.strftime("%Y-%m-%d %H:%M:%S"), "KPI_Status": kpi,
-            "Exit_Time": "Pending" if i % 2 == 0 else (entry_time + timedelta(minutes=45)).strftime("%Y-%m-%d %H:%M:%S"), 
-            "Warehouse_Location": random.choice(locations), "Status": "At Dock" if i % 2 == 0 else "Dispatched",
+            "Exit_Time": "Pending" if i % 3 == 0 else (entry_time + timedelta(minutes=random.randint(30, 90))).strftime("%Y-%m-%d %H:%M:%S"), 
+            "Warehouse_Location": random.choice(locations), "Status": "At Dock" if i % 3 == 0 else "Dispatched",
             "Last_Updated": entry_time.strftime("%Y-%m-%d %H:%M:%S")
         })
     st.session_state['truck_logs'] = pd.DataFrame(synthetic_trucks)
     st.session_state['last_auto_update'] = now
     st.session_state['auto_toggle'] = "entry" 
 
+# MASSIVELY SCALED INVENTORY
 if 'inventory' not in st.session_state:
     synthetic_inv = []
     sides = ["North Wing", "South Wing", "East Wing", "West Wing"]
-    for i in range(25):
+    for i in range(120): # Scaled up to 120 items
         item = random.choice(items_list)
         time_received = now - timedelta(days=random.randint(1, 90))
         max_life = random.choice([30, 60, 90, 120])
         synthetic_inv.append({
             "Batch_QR": f"QR-{random.randint(1000, 9999)}", "Item_Name": item, 
             "Unit_Cost_USD": base_costs[item], "Warehouse_Side": random.choice(sides),
-            "Aisle_Number": f"Aisle {random.randint(1, 15)}", "Bin_Location": f"Bin {random.choice(['A','B','C'])}-{random.randint(1,9)}",
+            "Aisle_Number": f"Aisle {random.randint(1, 15)}", "Bin_Location": f"Bin {random.choice(['A','B','C','D','E'])}",
             "X_Coord": random.randint(1, 20), "Y_Coord": random.randint(1, 15), "Z_Coord": random.randint(1, 5),
             "Time_Received": time_received.strftime("%Y-%m-%d %H:%M:%S"), "Max_Shelf_Life_Days": max_life,
             "Time_Dispatched": "N/A", "Dispatched_On_Truck": "N/A", "Status": "In Warehouse"
@@ -171,31 +184,15 @@ if (now - st.session_state['last_auto_update']).total_seconds() >= 58:
         st.session_state['truck_logs'] = pd.concat([new_entry, st.session_state['truck_logs']], ignore_index=True)
         st.session_state['auto_toggle'] = "exit"
         st.session_state['trigger_sound'] = "entry"
-        if page != "Dockyard Management":
-            st.toast(f"📡 Computer Vision: {auto_truck_id} plate scanned at main gate.", icon="🟢")
     else:
         docked = st.session_state['truck_logs'][st.session_state['truck_logs']["Status"] == "At Dock"]
         if not docked.empty:
             idx = docked.index[-1]
-            t_id = st.session_state['truck_logs'].at[idx, "Truck_ID"]
             st.session_state['truck_logs'].at[idx, "Exit_Time"] = now.strftime("%Y-%m-%d %H:%M:%S")
             st.session_state['truck_logs'].at[idx, "Status"] = "Dispatched"
             st.session_state['truck_logs'].at[idx, "Last_Updated"] = now.strftime("%Y-%m-%d %H:%M:%S")
         st.session_state['auto_toggle'] = "entry"
         st.session_state['trigger_sound'] = "exit"
-        if page != "Dockyard Management":
-            st.toast(f"📡 Fleet Update: {t_id} departed.", icon="🔴")
-
-audio_tag = ""
-if st.session_state['trigger_sound'] == "entry":
-    audio_tag = f"""<audio autoplay><source src="https://assets.mixkit.co/active_storage/sfx/2573/2573-preview.mp3?t={time.time()}" type="audio/mpeg"></audio>"""
-    st.session_state['trigger_sound'] = None
-elif st.session_state['trigger_sound'] == "exit":
-    audio_tag = f"""<audio autoplay><source src="https://assets.mixkit.co/active_storage/sfx/2574/2574-preview.mp3?t={time.time()}" type="audio/mpeg"></audio>"""
-    st.session_state['trigger_sound'] = None
-
-if page != "Dockyard Management" and audio_tag:
-    st.markdown(audio_tag, unsafe_allow_html=True)
 
 def get_enriched_inventory():
     df = st.session_state['inventory'].copy()
@@ -219,7 +216,7 @@ def get_enriched_inventory():
 # ==========================================
 if page == "Dockyard Management":
     st.title("🚛 Dockyard Management")
-    st.markdown("Automated gate sensors, real-time dispatch control, and KPI tracking.")
+    st.markdown("Automated gate sensors, real-time dispatch control, and high-volume KPI tracking.")
     
     df = st.session_state['truck_logs']
     latest_update = df.sort_values(by="Last_Updated", ascending=False).iloc[0]
@@ -247,7 +244,7 @@ if page == "Dockyard Management":
     """
     st.markdown(scanner_html, unsafe_allow_html=True)
     
-    st.subheader("🟢 Active Fleet (At Dock)")
+    st.subheader(f"🟢 Active Fleet at Dock ({len(df[df['Status'] == 'At Dock'])} Units)")
     html_docked = f"<table class='custom-table'><thead><tr><th>Truck ID</th><th>Scheduled ETA</th><th>Actual Entry</th><th>KPI Status</th><th>Location</th><th>Status</th></tr></thead><tbody>"
     for _, row in df[df["Status"] == "At Dock"].iterrows():
         html_docked += f"<tr><td>{row['Truck_ID']}</td><td>{row['Scheduled_ETA']}</td><td>{row['Entry_Time']}</td><td>{row['KPI_Status']}</td><td>{row['Warehouse_Location']}</td><td>{row['Status']}</td></tr>"
@@ -255,11 +252,11 @@ if page == "Dockyard Management":
     st.markdown(html_docked, unsafe_allow_html=True)
 
     st.markdown("---")
-    st.subheader("🔴 Dispatched Log")
-    html_dispatched = f"<table class='custom-table'><thead><tr><th>Truck ID</th><th>Scheduled ETA</th><th>Entry Time</th><th>Exit Time</th><th>KPI Status</th><th>Location</th></tr></thead><tbody>"
+    st.subheader(f"🔴 Historical Dispatched Log ({len(df[df['Status'] == 'Dispatched'])} Units)")
+    html_dispatched = f"<div style='max-height: 400px; overflow-y: auto;'><table class='custom-table'><thead><tr><th>Truck ID</th><th>Scheduled ETA</th><th>Entry Time</th><th>Exit Time</th><th>KPI Status</th><th>Location</th></tr></thead><tbody>"
     for _, row in df[df["Status"] == "Dispatched"].iterrows():
         html_dispatched += f"<tr><td>{row['Truck_ID']}</td><td>{row['Scheduled_ETA']}</td><td>{row['Entry_Time']}</td><td>{row['Exit_Time']}</td><td>{row['KPI_Status']}</td><td>{row['Warehouse_Location']}</td></tr>"
-    html_dispatched += "</tbody></table>"
+    html_dispatched += "</tbody></table></div>"
     st.markdown(html_dispatched, unsafe_allow_html=True)
     render_footer()
 
@@ -340,7 +337,7 @@ elif page == "Inventory & QR Tracking":
     
     st.markdown("---")
 
-    st.subheader("🟦 3D Warehouse Digital Twin")
+    st.subheader(f"🟦 3D Warehouse Digital Twin ({len(inv_df[inv_df['Status'] == 'In Warehouse'])} Pallets)")
     st.markdown("Interactive 3D scatter matrix mirroring physical storage architecture. **Click and drag to rotate.**")
     current_stock = inv_df[inv_df["Status"] == "In Warehouse"]
     
@@ -349,7 +346,7 @@ elif page == "Inventory & QR Tracking":
             x=current_stock['X_Coord'], y=current_stock['Y_Coord'], z=current_stock['Z_Coord'],
             mode='markers', text=current_stock['Batch_QR'] + "<br>" + current_stock['Item_Name'] + "<br>Health: " + current_stock['Shelf_Life_Health'],
             hoverinfo='text',
-            marker=dict(size=8, color=current_stock['Z_Coord'], colorscale='Tealgrn', opacity=0.9, line=dict(width=1, color='white'))
+            marker=dict(size=6, color=current_stock['Z_Coord'], colorscale='Tealgrn', opacity=0.9, line=dict(width=1, color='white'))
         )])
         fig_3d.update_layout(
             margin=dict(l=0, r=0, b=0, t=0), paper_bgcolor="rgba(0,0,0,0)",
@@ -359,7 +356,7 @@ elif page == "Inventory & QR Tracking":
                 yaxis=dict(gridcolor='#333', backgroundcolor='rgba(0,0,0,0)'),
                 zaxis=dict(gridcolor='#333', backgroundcolor='rgba(0,0,0,0)'),
                 camera=dict(eye=dict(x=1.5, y=1.5, z=0.5))
-            ), height=500
+            ), height=550
         )
         st.plotly_chart(fig_3d, use_container_width=True)
     else:
@@ -368,7 +365,7 @@ elif page == "Inventory & QR Tracking":
     st.markdown("---")
     st.subheader("Warehouse Inventory Database (Live Shelf Life)")
     display_cols = ['Batch_QR', 'Item_Name', 'Warehouse_Side', 'Age_Days', 'Max_Shelf_Life_Days', 'Shelf_Life_Health', 'Status']
-    st.dataframe(inv_df[display_cols], use_container_width=True)
+    st.dataframe(inv_df[display_cols], use_container_width=True, height=350)
     render_footer()
 
 # ==========================================
@@ -398,7 +395,7 @@ elif page == "ERP & Global Procurement":
     erp_records = []
     for item in items_list:
         count = len(current_stock[current_stock['Item_Name'] == item])
-        base_safety = 4 
+        base_safety = 15 # Increased base safety to match the massive inventory scale
         dynamic_safety = int(base_safety * ai_multiplier)
         status = "Optimal"
         if count <= dynamic_safety:
@@ -409,7 +406,7 @@ elif page == "ERP & Global Procurement":
                 local_cost = round(base_costs[item] * best_rate, 2)
                 st.session_state['erp_order_logs'].insert(0, f"[{now.strftime('%H:%M:%S')}] 🤖 AI CROSS-BORDER EXECUTION: Bought {order_qty}x {item} from {best_hub} @ {local_cost} local currency.")
                 st.session_state['erp_order_logs'].insert(0, f"[{now.strftime('%H:%M:%S')}] AUTO_ORDER_{item}_LOGGED")
-        elif count <= dynamic_safety + 2:
+        elif count <= dynamic_safety + 4:
             status = "🟠 Approaching AI Threshold"
         erp_records.append({"Product": item, "Live Stock": count, "Dynamic AI Safety": dynamic_safety, "ERP Status": status})
         
@@ -505,7 +502,7 @@ elif page == "GPS & Fleet Tracking":
         map_zoom = 11.5
         map_center = {"lat": plot_data[0]["curr_lat"], "lon": plot_data[0]["curr_lon"]}
     else:
-        st.subheader("📡 Satellite Telemetry: All Active Fleet")
+        st.subheader(f"📡 Satellite Telemetry: All Active Fleet ({len(fleet_data)} Transports)")
         plot_data = fleet_data
         map_zoom = 9
         map_center = {"lat": 25.12, "lon": 55.20}
@@ -543,12 +540,12 @@ elif page == "GPS & Fleet Tracking":
         marker_text = f"<b>{d['Truck']}</b><br>Speed: {d['speed']} km/h<br>ETA: {d['ETA']}<br>CO2: {d['co2']}kg"
         fig.add_trace(go.Scattermap(
             mode="markers", lon=[d['curr_lon']], lat=[d['curr_lat']],
-            marker=dict(size=18, color='#00D2FF'), name=d['Truck'], text=marker_text, hoverinfo='text'
+            marker=dict(size=16, color='#00D2FF'), name=d['Truck'], text=marker_text, hoverinfo='text'
         ))
 
     fig.update_layout(
         map=map_layout, uirevision=selected_truck, margin={"r":0,"t":0,"l":0,"b":0},
-        showlegend=False, height=550
+        showlegend=False, height=600
     )
     st.plotly_chart(fig, use_container_width=True)
     render_footer()
@@ -618,7 +615,7 @@ elif page == "AI Predictive Analytics":
     render_footer()
 
 # ==========================================
-# PAGE 6: ABOUT STORMNODE
+# PAGE 6: ABOUT STORMNODE (MASSIVELY EXPANDED)
 # ==========================================
 elif page == "About StormNode":
     st.title("⚡ About StormNode Logistics")
@@ -627,45 +624,57 @@ elif page == "About StormNode":
     st.markdown("---")
     
     st.subheader("Global Operations At A Glance")
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns(3)
     with col1:
         fig_eff = go.Figure(go.Indicator(
             mode = "gauge+number", value = 94.2, title = {'text': "Fleet Efficiency (%)"},
             gauge = {'axis': {'range': [None, 100]}, 'bar': {'color': "#00D2FF"}}
         ))
-        fig_eff.update_layout(height=250, margin=dict(t=40, b=0, l=0, r=0), paper_bgcolor="rgba(0,0,0,0)", font={'color': "#C5C6C7"})
+        fig_eff.update_layout(height=220, margin=dict(t=40, b=0, l=0, r=0), paper_bgcolor="rgba(0,0,0,0)", font={'color': "#C5C6C7"})
         st.plotly_chart(fig_eff, use_container_width=True)
     with col2:
         fig_up = go.Figure(go.Indicator(
             mode = "gauge+number", value = 99.9, title = {'text': "System Uptime (%)"},
             gauge = {'axis': {'range': [None, 100]}, 'bar': {'color': "#00FF55"}}
         ))
-        fig_up.update_layout(height=250, margin=dict(t=40, b=0, l=0, r=0), paper_bgcolor="rgba(0,0,0,0)", font={'color': "#C5C6C7"})
+        fig_up.update_layout(height=220, margin=dict(t=40, b=0, l=0, r=0), paper_bgcolor="rgba(0,0,0,0)", font={'color': "#C5C6C7"})
         st.plotly_chart(fig_up, use_container_width=True)
+    with col3:
+        fig_ai = go.Figure(go.Indicator(
+            mode = "gauge+number", value = 1.2, title = {'text': "AI Latency (ms)"},
+            gauge = {'axis': {'range': [None, 5]}, 'bar': {'color': "#FFB300"}}
+        ))
+        fig_ai.update_layout(height=220, margin=dict(t=40, b=0, l=0, r=0), paper_bgcolor="rgba(0,0,0,0)", font={'color': "#C5C6C7"})
+        st.plotly_chart(fig_ai, use_container_width=True)
     
     st.markdown("---")
     st.markdown("""
-    **StormNode Logistics** is a next-generation freight and warehousing platform designed to bridge the gap between heavy physical freight and cutting-edge digital infrastructure. 
+    **StormNode Logistics** is a next-generation freight and warehousing platform designed to completely bridge the gap between heavy physical freight and cutting-edge digital infrastructure. 
     
-    Founded in 2026, our mission is to completely eliminate supply chain opacity. Traditional logistics rely on manual data entry, fractured communication, and fragmented tracking systems. At StormNode, we treat every warehouse, dispatch truck, and cargo batch as a vital "node" in a highly connected, automated neural network.
+    Built natively on Python for unparalleled data analytics and automated task processing, our architecture treats every warehouse, dispatch truck, and cargo batch as a vital "node" in a highly connected, self-healing neural network. This prototype demonstrates enterprise-grade logistics capabilities optimized specifically for complex, high-velocity distribution models.
     """)
     
-    st.markdown("### Platform Capabilities")
-    with st.expander("🏭 Automated Dockyard Management", expanded=True):
-        st.write("Real-time sensor integration automates entry logs, dispatch clearances, and staging bay allocations. By utilizing edge-computing at the gates, we eliminate gatehouse bottlenecks, manual processing delays, and driver wait times.")
-    with st.expander("📦 Inventory & Granular QR Tracing"):
-        st.write("High-fidelity tracing ties exact physical bin locations to active transport routes. Utilizing a 3D Digital Twin, our system ensures 100% chain-of-custody compliance from receipt at the dock to final delivery, reducing lost stock by 98%.")
-    with st.expander("⚙️ Enterprise Resource Planning (ERP)"):
-        st.write("Live procurement automation ensures peak-season safety stock levels are perpetually maintained. AI agents monitor global inventory velocity and generate purchase orders autonomously before stockout events occur.")
-    with st.expander("🛰️ Neural Routing & Telemetry"):
-        st.write("GPS fleet monitoring tracks transit progression dynamically over active satellite overlays. Machine learning algorithms adjust arrival ETAs for predictive warehouse receiving and optimize fuel routes around active traffic events.")
+    st.markdown("### 📦 Strategic Focus: Packaged Foods Sector")
+    st.markdown("""
+    The architecture of StormNode is heavily optimized for the rapidly expanding Packaged Foods and FMCG sectors. This vertical faces unique challenges: highly volatile seasonal demand, strict shelf-life constraints, and heavy reliance on cold-chain integrity. 
+    
+    Our proprietary **Dynamic Inventory Engine** calculates the exact age of every pallet in real-time, assigning a live health matrix to ensure expiring stock is autonomously rotated and dispatched before capital loss occurs. Coupled with our predictive Random Forest machine learning models, the system ensures that regional food distribution centers never face critical staging bottlenecks that could compromise perishable cargo.
+    """)
+
+    st.markdown("### 🧠 Platform Capabilities")
+    with st.expander("🏭 Automated Dockyard Management & IoT", expanded=True):
+        st.write("Real-time physical sensor integration automates entry logs, dispatch clearances, and staging bay allocations. By utilizing edge-computing at the physical gates, StormNode eliminates manual gatehouse processing delays, drastically reducing idle times and fuel burn for massive heavy-freight fleets.")
+    with st.expander("📦 Inventory & Blockchain Chain-of-Custody"):
+        st.write("High-fidelity tracing ties exact physical bin locations to active transport routes using a 3D Cartesian Coordinate Digital Twin. To prevent fraud and theft, every dispatch is locked into an immutable ledger using SHA-256 cryptographic hashing, guaranteeing a 100% transparent chain of custody from the manufacturer to the end-consumer.")
+    with st.expander("⚙️ Agentic AI & Enterprise Resource Planning (ERP)"):
+        st.write("StormNode utilizes bleeding-edge Agentic AI—digital employees embedded directly in the software. When constraints are detected, these AI agents negotiate spot rates, trigger automated purchase orders, and reroute trucks completely autonomously. The global ERP engine actively monitors live capital lock-up and calculates ESG carbon taxes in real-time.")
     
     st.markdown("---")
     st.markdown("### 🚂 Our Vision: The Intermodal Railway Future")
     st.markdown("""
-    The ultimate evolution of StormNode lies beyond the highway. Our technical roadmap is heavily focused on **Intermodal Freight and Railway Integration**. 
+    The ultimate evolution of StormNode lies far beyond the highway. Our technical roadmap is heavily focused on **Intermodal Freight and High-Capacity Railway Integration** across critical international trade triangles. 
     
-    The railway sector forms the absolute backbone of heavy-capacity national and international logistics. As this platform matures, our vision is to bridge the gap between regional truck dockyards and high-speed rail terminals. Future iterations of StormNode will seamlessly track physical freight as it transfers from automated truck hubs directly onto extensive rail networks, providing an unbroken, immutable chain of custody across massive geographical regions.
+    The global railway sector forms the absolute backbone of sustainable logistics. As this platform matures, our vision is to seamlessly bridge the gap between regional truck dockyards and high-speed intermodal rail networks. By unifying freight tracking across vital global hubs—specifically optimizing the flow of goods between **Dubai, Singapore, and India**—StormNode will provide an unbroken, financially optimized, and environmentally conscious chain of custody across massive, multi-continental geographical regions.
     """)
     
     render_footer()
