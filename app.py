@@ -111,7 +111,7 @@ if 'fleet_state' not in st.session_state:
         {"id": "TRK-908", "dest": "Al Maktoum Int", "progress": 0.55, "traffic": "Moderate", "color": "#FFBF00", "speed": 60, "eta": (now + timedelta(minutes=int(0.45*180))).strftime("%I:%M %p")}
     ]
 
-# MASSIVELY SCALED DOCKYARD LOGS
+# MASSIVELY SCALED DOCKYARD LOGS WITH STRICT CHRONOLOGICAL SORTING
 if 'truck_logs' not in st.session_state:
     synthetic_trucks = []
     locations = ["Whse A - Dock 1", "Whse A - Dock 2", "Whse A - Dock 3", "Whse B - Dock 1", "Whse B - Dock 2", "Whse C - Heavy Freight", "Whse C - Cold Chain"]
@@ -127,11 +127,12 @@ if 'truck_logs' not in st.session_state:
             "Warehouse_Location": random.choice(locations), "Status": "At Dock" if i % 3 == 0 else "Dispatched",
             "Last_Updated": entry_time.strftime("%Y-%m-%d %H:%M:%S")
         })
-    st.session_state['truck_logs'] = pd.DataFrame(synthetic_trucks)
+    df_trucks = pd.DataFrame(synthetic_trucks)
+    st.session_state['truck_logs'] = df_trucks.sort_values(by="Last_Updated", ascending=False).reset_index(drop=True)
     st.session_state['last_auto_update'] = now
     st.session_state['auto_toggle'] = "entry" 
 
-# MASSIVELY SCALED INVENTORY
+# MASSIVELY SCALED INVENTORY WITH STRICT CHRONOLOGICAL SORTING
 if 'inventory' not in st.session_state:
     synthetic_inv = []
     sides = ["North Wing", "South Wing", "East Wing", "West Wing"]
@@ -147,7 +148,8 @@ if 'inventory' not in st.session_state:
             "Time_Received": time_received.strftime("%Y-%m-%d %H:%M:%S"), "Max_Shelf_Life_Days": max_life,
             "Time_Dispatched": "N/A", "Dispatched_On_Truck": "N/A", "Status": "In Warehouse"
         })
-    st.session_state['inventory'] = pd.DataFrame(synthetic_inv)
+    df_inv = pd.DataFrame(synthetic_inv)
+    st.session_state['inventory'] = df_inv.sort_values(by="Time_Received", ascending=False).reset_index(drop=True)
     st.session_state['total_carbon_tax_accrued'] = 0.0
 
 # --- NAVIGATION ---
@@ -281,7 +283,8 @@ if page == "Dockyard Management":
     
     st.subheader(f"🟢 Active Fleet at Dock ({len(df[df['Status'] == 'At Dock'])} Units)")
     html_docked = f"{css_animations}<table class='custom-table'><thead><tr><th>Truck ID</th><th>Scheduled ETA</th><th>Actual Entry</th><th>KPI Status</th><th>Location</th><th>Status</th></tr></thead><tbody>"
-    for _, row in df[df["Status"] == "At Dock"].iterrows():
+    
+    for _, row in df[df["Status"] == "At Dock"].sort_values(by="Last_Updated", ascending=False).iterrows():
         time_diff = (now - datetime.strptime(row['Last_Updated'], "%Y-%m-%d %H:%M:%S")).total_seconds()
         row_class = "blinking-row-green" if time_diff <= 20 else ""
         html_docked += f"<tr class='{row_class}'><td>{row['Truck_ID']}</td><td>{row['Scheduled_ETA']}</td><td>{row['Entry_Time']}</td><td>{row['KPI_Status']}</td><td>{row['Warehouse_Location']}</td><td>{row['Status']}</td></tr>"
@@ -291,7 +294,8 @@ if page == "Dockyard Management":
     st.markdown("---")
     st.subheader(f"🔴 Historical Dispatched Log ({len(df[df['Status'] == 'Dispatched'])} Units)")
     html_dispatched = f"<div style='max-height: 400px; overflow-y: auto;'><table class='custom-table'><thead><tr><th>Truck ID</th><th>Scheduled ETA</th><th>Entry Time</th><th>Exit Time</th><th>KPI Status</th><th>Location</th></tr></thead><tbody>"
-    for _, row in df[df["Status"] == "Dispatched"].iterrows():
+    
+    for _, row in df[df["Status"] == "Dispatched"].sort_values(by="Last_Updated", ascending=False).iterrows():
         time_diff = (now - datetime.strptime(row['Last_Updated'], "%Y-%m-%d %H:%M:%S")).total_seconds()
         row_class = "blinking-row-red" if time_diff <= 20 else ""
         html_dispatched += f"<tr class='{row_class}'><td>{row['Truck_ID']}</td><td>{row['Scheduled_ETA']}</td><td>{row['Entry_Time']}</td><td>{row['Exit_Time']}</td><td>{row['KPI_Status']}</td><td>{row['Warehouse_Location']}</td></tr>"
@@ -404,7 +408,8 @@ elif page == "Inventory & QR Tracking":
     st.markdown("---")
     st.subheader("Warehouse Inventory Database (Live Shelf Life)")
     display_cols = ['Batch_QR', 'Item_Name', 'Warehouse_Side', 'Age_Days', 'Max_Shelf_Life_Days', 'Shelf_Life_Health', 'Status']
-    st.dataframe(inv_df[display_cols], use_container_width=True, height=350)
+    sorted_inv = inv_df.sort_values(by="Time_Received", ascending=False)
+    st.dataframe(sorted_inv[display_cols], use_container_width=True, height=350)
     render_footer()
 
 # ==========================================
