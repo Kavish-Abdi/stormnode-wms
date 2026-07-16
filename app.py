@@ -51,12 +51,6 @@ st.markdown("""
         border: 1px solid #30363d; font-size: 13px; line-height: 1.5;
     }
     
-    .agent-terminal { 
-        background-color: #07090e; color: #FFB300; font-family: 'Courier New', Courier, monospace; 
-        padding: 15px; border-radius: 5px; height: 280px; overflow-y: hidden; 
-        border: 1px solid #FFB30040; font-size: 13px; line-height: 1.6; 
-    }
-    
     /* Custom Tables */
     .custom-table { width: 100%; text-align: left; border-collapse: collapse; color: #C5C6C7; font-size: 14px; margin-bottom: 20px;}
     .custom-table th, .custom-table td { padding: 10px; border-bottom: 1px solid #1F2833; }
@@ -643,23 +637,8 @@ elif page == "AI Predictive Analytics":
     st.plotly_chart(fig_ml, use_container_width=True)
     
     st.error("🚨 **Root Cause Diagnostic:** Neural network cross-referencing indicates an unscheduled high-capacity **railway freight exchange** is overlapping with our peak Friday outbound highway dispatch window. This intermodal collision will exhaust available staging bays.")
+    st.info("💡 **AI Recommendation:** Divert 40% of Friday's highway fleet to the secondary holding zone and schedule 3 additional cross-docking coordinators to manage the railway offload.")
     
-    st.markdown("---")
-    st.subheader("🤖 Agentic AI Self-Healing Command Terminal")
-    st.markdown("Embedded autonomous agents collaborating natively inside the software architecture to resolve constraints.")
-    
-    # Generate shifting conversation logs based on active clock ticks
-    t_sec = int(time.time()) % 20
-    if t_sec < 5:
-        step_log = f"[{now.strftime('%H:%M:%S')}] [LCA_AGENT]: Friday railway bottleneck intercepted. Capacity limit threshold reached. Ping @CBA_AGENT.<br>[{now.strftime('%H:%M:%S')}] [SYSTEM]: Awaiting Agent negotiation protocols..."
-    elif t_sec < 10:
-        step_log = f"[{now.strftime('%H:%M:%S')}] [LCA_AGENT]: Friday railway bottleneck intercepted. Capacity limit threshold reached. Ping @CBA_AGENT.<br>[{now.strftime('%H:%M:%S')}] [CBA_AGENT]: Acknowledged. Pinging spot-carrier APIs to execute dynamic holding container buffer contracts..."
-    elif t_sec < 15:
-        step_log = f"[{now.strftime('%H:%M:%S')}] [LCA_AGENT]: Friday railway bottleneck intercepted.<br>[{now.strftime('%H:%M:%S')}] [CBA_AGENT]: Spot rate contract successfully renegotiated at -8% baseline via automated API handshake.<br>[{now.strftime('%H:%M:%S')}] [LCA_AGENT]: Rerouting commands broadcasted. Diverting 40% of highway inbound trucks to Secondary Holding Zone B in real-time."
-    else:
-        step_log = f"[{now.strftime('%H:%M:%S')}] [CBA_AGENT]: Spot contract renegotiated at -8% baseline via automated API handshake.<br>[{now.strftime('%H:%M:%S')}] [LCA_AGENT]: Diverting 40% of highway inbound trucks to Secondary Holding Zone B in real-time.<br>[{now.strftime('%H:%M:%S')}] [LCA_AGENT]: <b>[AUTO-EXECUTE SUCCESS]</b> 3D Digital Twin updated. Staging cross-docking bays 3 & 4 completely cleared for early railway offload."
-
-    st.markdown(f'<div class="agent-terminal"><span style="color:#00FF55;">[STATUS: AUTONOMOUSLY HEALING DEVIATION]</span><br><br>{step_log}</div>', unsafe_allow_html=True)
     render_footer()
 
 # ==========================================
