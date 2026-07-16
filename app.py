@@ -28,14 +28,9 @@ st.markdown("""
     .crypto-terminal { background-color: #0d1117; color: #00FF55; font-family: 'Courier New', Courier, monospace; padding: 15px; border-radius: 5px; height: 250px; overflow-y: hidden; border: 1px solid #30363d; font-size: 13px; line-height: 1.5; }
     .agent-terminal { background-color: #07090e; color: #FFB300; font-family: 'Courier New', Courier, monospace; padding: 15px; border-radius: 5px; height: 280px; overflow-y: hidden; border: 1px solid #FFB30040; font-size: 13px; line-height: 1.6; }
     
-    /* Custom Tables & Blinking Rows */
     .custom-table { width: 100%; text-align: left; border-collapse: collapse; color: #C5C6C7; font-size: 14px; margin-bottom: 20px;}
     .custom-table th, .custom-table td { padding: 10px; border-bottom: 1px solid #1F2833; }
     .custom-table th { color: #ffffff; font-weight: bold; background-color: #1A2235; }
-    @keyframes flashGreen { 0% {background-color: transparent;} 50% {background-color: rgba(0, 255, 85, 0.25);} 100% {background-color: transparent;} }
-    @keyframes flashRed { 0% {background-color: transparent;} 50% {background-color: rgba(255, 51, 51, 0.25);} 100% {background-color: transparent;} }
-    .blink-row-green { animation: flashGreen 2s infinite; }
-    .blink-row-red { animation: flashRed 2s infinite; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -274,11 +269,21 @@ if page == "Dockyard Management":
     """
     st.markdown(scanner_html, unsafe_allow_html=True)
     
+    css_animations = f"""
+    {audio_tag}
+    <style>
+    @keyframes blink-animation-green {{ 0% {{ background-color: #00FF55; color: #000000; }} 50% {{ background-color: transparent; color: #C5C6C7; }} 100% {{ background-color: #00FF55; color: #000000; }} }}
+    @keyframes blink-animation-red {{ 0% {{ background-color: #FF3333; color: #000000; }} 50% {{ background-color: transparent; color: #C5C6C7; }} 100% {{ background-color: #FF3333; color: #000000; }} }}
+    .blinking-row-green {{ animation: blink-animation-green 1s linear 20; }}
+    .blinking-row-red {{ animation: blink-animation-red 1s linear 20; }}
+    </style>
+    """
+    
     st.subheader(f"🟢 Active Fleet at Dock ({len(df[df['Status'] == 'At Dock'])} Units)")
-    html_docked = f"<table class='custom-table'><thead><tr><th>Truck ID</th><th>Scheduled ETA</th><th>Actual Entry</th><th>KPI Status</th><th>Location</th><th>Status</th></tr></thead><tbody>"
+    html_docked = f"{css_animations}<table class='custom-table'><thead><tr><th>Truck ID</th><th>Scheduled ETA</th><th>Actual Entry</th><th>KPI Status</th><th>Location</th><th>Status</th></tr></thead><tbody>"
     for _, row in df[df["Status"] == "At Dock"].iterrows():
-        row_dt = datetime.strptime(row['Last_Updated'], "%Y-%m-%d %H:%M:%S")
-        row_class = "blink-row-green" if (now - row_dt).total_seconds() <= 20 else ""
+        time_diff = (now - datetime.strptime(row['Last_Updated'], "%Y-%m-%d %H:%M:%S")).total_seconds()
+        row_class = "blinking-row-green" if time_diff <= 20 else ""
         html_docked += f"<tr class='{row_class}'><td>{row['Truck_ID']}</td><td>{row['Scheduled_ETA']}</td><td>{row['Entry_Time']}</td><td>{row['KPI_Status']}</td><td>{row['Warehouse_Location']}</td><td>{row['Status']}</td></tr>"
     html_docked += "</tbody></table>"
     st.markdown(html_docked, unsafe_allow_html=True)
@@ -287,8 +292,8 @@ if page == "Dockyard Management":
     st.subheader(f"🔴 Historical Dispatched Log ({len(df[df['Status'] == 'Dispatched'])} Units)")
     html_dispatched = f"<div style='max-height: 400px; overflow-y: auto;'><table class='custom-table'><thead><tr><th>Truck ID</th><th>Scheduled ETA</th><th>Entry Time</th><th>Exit Time</th><th>KPI Status</th><th>Location</th></tr></thead><tbody>"
     for _, row in df[df["Status"] == "Dispatched"].iterrows():
-        row_dt = datetime.strptime(row['Last_Updated'], "%Y-%m-%d %H:%M:%S")
-        row_class = "blink-row-red" if (now - row_dt).total_seconds() <= 20 else ""
+        time_diff = (now - datetime.strptime(row['Last_Updated'], "%Y-%m-%d %H:%M:%S")).total_seconds()
+        row_class = "blinking-row-red" if time_diff <= 20 else ""
         html_dispatched += f"<tr class='{row_class}'><td>{row['Truck_ID']}</td><td>{row['Scheduled_ETA']}</td><td>{row['Entry_Time']}</td><td>{row['Exit_Time']}</td><td>{row['KPI_Status']}</td><td>{row['Warehouse_Location']}</td></tr>"
     html_dispatched += "</tbody></table></div>"
     st.markdown(html_dispatched, unsafe_allow_html=True)
