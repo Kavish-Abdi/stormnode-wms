@@ -114,7 +114,7 @@ if 'fleet_state' not in st.session_state:
 if 'truck_logs' not in st.session_state:
     synthetic_trucks = []
     locations = ["Whse A - Dock 1", "Whse A - Dock 2", "Whse A - Dock 3", "Whse B - Dock 1", "Whse B - Dock 2", "Whse C - Heavy Freight", "Whse C - Cold Chain"]
-    for i in range(40):  # Scaled up to 40 records
+    for i in range(40):  
         entry_time = now - timedelta(minutes=random.randint(15, 300))
         offset = random.randint(-45, 45)
         scheduled_eta = entry_time + timedelta(minutes=offset)
@@ -134,7 +134,7 @@ if 'truck_logs' not in st.session_state:
 if 'inventory' not in st.session_state:
     synthetic_inv = []
     sides = ["North Wing", "South Wing", "East Wing", "West Wing"]
-    for i in range(120): # Scaled up to 120 items
+    for i in range(120): 
         item = random.choice(items_list)
         time_received = now - timedelta(days=random.randint(1, 90))
         max_life = random.choice([30, 60, 90, 120])
@@ -160,7 +160,7 @@ page = st.sidebar.radio("Main Menu", [
     "About StormNode"
 ])
 
-# --- GLOBAL BACKGROUND EVENT SIMULATOR ---
+# --- GLOBAL BACKGROUND EVENT SIMULATOR (NOTIFICATIONS RESTORED) ---
 current_co2 = 0
 for t in st.session_state['fleet_state']:
     t['progress'] += random.uniform(0.002, 0.006)
@@ -184,15 +184,31 @@ if (now - st.session_state['last_auto_update']).total_seconds() >= 58:
         st.session_state['truck_logs'] = pd.concat([new_entry, st.session_state['truck_logs']], ignore_index=True)
         st.session_state['auto_toggle'] = "exit"
         st.session_state['trigger_sound'] = "entry"
+        st.toast(f"📡 Computer Vision: {auto_truck_id} plate scanned at main gate.", icon="🟢")
     else:
         docked = st.session_state['truck_logs'][st.session_state['truck_logs']["Status"] == "At Dock"]
+        t_id = "Unknown"
         if not docked.empty:
             idx = docked.index[-1]
+            t_id = st.session_state['truck_logs'].at[idx, "Truck_ID"]
             st.session_state['truck_logs'].at[idx, "Exit_Time"] = now.strftime("%Y-%m-%d %H:%M:%S")
             st.session_state['truck_logs'].at[idx, "Status"] = "Dispatched"
             st.session_state['truck_logs'].at[idx, "Last_Updated"] = now.strftime("%Y-%m-%d %H:%M:%S")
         st.session_state['auto_toggle'] = "entry"
         st.session_state['trigger_sound'] = "exit"
+        if t_id != "Unknown":
+            st.toast(f"📡 Fleet Update: {t_id} departed.", icon="🔴")
+
+audio_tag = ""
+if st.session_state['trigger_sound'] == "entry":
+    audio_tag = f"""<audio autoplay><source src="https://assets.mixkit.co/active_storage/sfx/2573/2573-preview.mp3?t={time.time()}" type="audio/mpeg"></audio>"""
+    st.session_state['trigger_sound'] = None
+elif st.session_state['trigger_sound'] == "exit":
+    audio_tag = f"""<audio autoplay><source src="https://assets.mixkit.co/active_storage/sfx/2574/2574-preview.mp3?t={time.time()}" type="audio/mpeg"></audio>"""
+    st.session_state['trigger_sound'] = None
+
+if audio_tag:
+    st.markdown(audio_tag, unsafe_allow_html=True)
 
 def get_enriched_inventory():
     df = st.session_state['inventory'].copy()
